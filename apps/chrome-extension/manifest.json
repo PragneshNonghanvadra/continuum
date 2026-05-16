@@ -6,8 +6,7 @@
   "permissions": ["activeTab", "scripting", "storage", "tabs"],
   "host_permissions": ["http://127.0.0.1:5174/*"],
   "background": {
-    "service_worker": "dist-extension/background.js",
-    "type": "module"
+    "service_worker": "dist-extension/background.js"
   },
   "content_scripts": [
     {
