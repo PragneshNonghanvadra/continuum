@@ -26,6 +26,22 @@ export const captureArtifacts = sqliteTable("capture_artifacts", {
   createdAt: text("created_at").notNull()
 });
 
+export const captureSources = sqliteTable("capture_sources", {
+  id: text("id").primaryKey(),
+  sessionId: text("session_id").notNull(),
+  sourceType: text("source_type").notNull(),
+  appName: text("app_name"),
+  bundleId: text("bundle_id"),
+  windowTitle: text("window_title"),
+  sourceUrl: text("source_url"),
+  filePath: text("file_path"),
+  captureCapabilitiesJson: text("capture_capabilities_json"),
+  permissionState: text("permission_state").notNull(),
+  metadataJson: text("metadata_json"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull()
+});
+
 export const memoryCards = sqliteTable("memory_cards", {
   id: text("id").primaryKey(),
   sessionId: text("session_id"),

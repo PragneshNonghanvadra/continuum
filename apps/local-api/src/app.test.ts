@@ -341,3 +341,52 @@ test("AI settings API exposes provider mode without secrets", async () => {
   expect(payload.provider.kind).toBe("mock");
   expect(payload.provider).not.toHaveProperty("apiKey");
 });
+
+test("capture capabilities API includes browser and native capture surfaces", async () => {
+  const app = createApiApp({ db: createMemoryDatabase() });
+  const payload = await (await app.request("/api/capture/capabilities")).json();
+
+  expect(payload.capabilities.some((capability: { sourceType: string }) => capability.sourceType === "browser_tab")).toBe(true);
+  expect(payload.capabilities.some((capability: { sourceType: string }) => capability.sourceType === "macos_app")).toBe(true);
+  expect(payload.capabilities.some((capability: { sourceType: string }) => capability.sourceType === "system_audio")).toBe(true);
+});
+
+test("native capture API ingests non-browser artifacts into the active session", async () => {
+  const app = createApiApp({ db: createMemoryDatabase() });
+  const sessionResponse = await app.request("/api/sessions", {
+    body: JSON.stringify({ mode: "research", title: "Native Preview capture" }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  const { session } = await sessionResponse.json();
+
+  const ingestResponse = await app.request("/api/native-capture/events", {
+    body: JSON.stringify({
+      artifacts: [
+        {
+          artifactType: "document_text",
+          content: "Preview extracted text from a downloaded PDF without manual upload."
+        }
+      ],
+      source: {
+        appName: "Preview",
+        captureCapabilities: ["document_text", "ocr_text"],
+        filePath: "/Users/me/Downloads/local.pdf",
+        permissionState: "granted",
+        sourceType: "file_document",
+        windowTitle: "local.pdf"
+      }
+    }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+
+  expect(ingestResponse.status).toBe(201);
+  const payload = await ingestResponse.json();
+  expect(payload.session.id).toBe(session.id);
+  expect(payload.source.sourceType).toBe("file_document");
+  expect(payload.artifacts[0].artifactType).toBe("document_text");
+
+  const sourcesPayload = await (await app.request(`/api/sessions/${session.id}/sources`)).json();
+  expect(sourcesPayload.sources[0].appName).toBe("Preview");
+});

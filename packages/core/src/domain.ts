@@ -30,7 +30,12 @@ export const artifactTypes = [
   "browser_selection",
   "browser_visible_text",
   "video_caption",
-  "audio_metadata"
+  "audio_metadata",
+  "native_app_text",
+  "native_window_snapshot",
+  "document_text",
+  "clipboard_text",
+  "system_audio_metadata"
 ] as const;
 
 export type ArtifactType = (typeof artifactTypes)[number];
@@ -79,6 +84,58 @@ export type CreateArtifactInput = {
   timestampStart?: number;
   timestampEnd?: number;
   metadata?: Record<string, unknown>;
+};
+
+export const captureSourceTypes = [
+  "browser_tab",
+  "macos_app",
+  "screen_window",
+  "system_audio",
+  "file_document",
+  "clipboard",
+  "manual"
+] as const;
+
+export type CaptureSourceType = (typeof captureSourceTypes)[number];
+
+export const capturePermissionStates = ["unknown", "not_required", "granted", "denied", "prompt_required"] as const;
+
+export type CapturePermissionState = (typeof capturePermissionStates)[number];
+
+export type CaptureSource = {
+  id: string;
+  sessionId: string;
+  sourceType: CaptureSourceType;
+  appName?: string;
+  bundleId?: string;
+  windowTitle?: string;
+  sourceUrl?: string;
+  filePath?: string;
+  captureCapabilities: string[];
+  permissionState: CapturePermissionState;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateCaptureSourceInput = {
+  sessionId: string;
+  sourceType: CaptureSourceType;
+  appName?: string;
+  bundleId?: string;
+  windowTitle?: string;
+  sourceUrl?: string;
+  filePath?: string;
+  captureCapabilities?: string[];
+  permissionState?: CapturePermissionState;
+  metadata?: Record<string, unknown>;
+};
+
+export type NativeCaptureEventInput = {
+  sessionId?: string;
+  source?: Omit<CreateCaptureSourceInput, "sessionId"> & { sessionId?: string };
+  artifacts: Array<Omit<CreateArtifactInput, "sessionId">>;
+  occurredAt?: string;
 };
 
 export type ImportantMoment = {

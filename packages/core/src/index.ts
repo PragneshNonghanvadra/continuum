@@ -12,9 +12,13 @@ export type {
   ArtifactType,
   CaptureArtifact,
   CaptureMode,
+  CapturePermissionState,
   CaptureSession,
+  CaptureSource,
+  CaptureSourceType,
   CaptureStatus,
   CreateArtifactInput,
+  CreateCaptureSourceInput,
   CreateImportantMomentInput,
   CreateSessionInput,
   ExtensionPairing,
@@ -23,12 +27,20 @@ export type {
   MemoryCategory,
   MemoryLink,
   MemoryType,
+  NativeCaptureEventInput,
   ReaderPage,
   RevisionItem,
   UpdateSessionInput
 } from "./domain";
-export { artifactTypes, captureModes, captureStatuses } from "./domain";
+export { artifactTypes, captureModes, capturePermissionStates, captureSourceTypes, captureStatuses } from "./domain";
 export { createArtifact, listArtifactsForSession } from "./db/artifactRepository";
+export {
+  createCaptureSource,
+  ingestNativeCaptureEvent,
+  listCaptureCapabilities,
+  listCaptureSourcesForSession,
+  type NativeCaptureEventResult
+} from "./db/captureSourceRepository";
 export { createMemoryDatabase, openContinuumDatabase } from "./db/connection";
 export { ensureContinuumDataDir, getContinuumDataDir, getContinuumDatabasePath } from "./db/dataDirectory";
 export { createImportantMoment, listImportantMomentsForSession } from "./db/importantMomentRepository";

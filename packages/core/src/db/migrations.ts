@@ -29,6 +29,22 @@ export function runMigrations(db: Database) {
       created_at text not null
     );
 
+    create table if not exists capture_sources (
+      id text primary key,
+      session_id text not null references capture_sessions(id),
+      source_type text not null,
+      app_name text,
+      bundle_id text,
+      window_title text,
+      source_url text,
+      file_path text,
+      capture_capabilities_json text,
+      permission_state text not null,
+      metadata_json text,
+      created_at text not null,
+      updated_at text not null
+    );
+
     create table if not exists memory_cards (
       id text primary key,
       session_id text references capture_sessions(id),
@@ -192,6 +208,8 @@ export function runMigrations(db: Database) {
 
     create index if not exists capture_sessions_status_idx on capture_sessions(status);
     create index if not exists capture_artifacts_session_idx on capture_artifacts(session_id);
+    create index if not exists capture_sources_session_idx on capture_sources(session_id);
+    create index if not exists capture_sources_type_idx on capture_sources(source_type);
     create index if not exists memory_cards_status_idx on memory_cards(status);
     create index if not exists memory_cards_session_idx on memory_cards(session_id);
     create index if not exists reader_pages_source_session_idx on reader_pages(source_session_id);

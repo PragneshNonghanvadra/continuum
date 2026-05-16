@@ -5,10 +5,14 @@ import {
   askMemory,
   createArtifact,
   createAiProviderFromEnv,
+  createCaptureSource,
   createExtensionPairing,
   createImportantMoment,
   createSession,
   deleteSession,
+  ingestNativeCaptureEvent,
+  listCaptureCapabilities,
+  listCaptureSourcesForSession,
   getSession,
   getExtensionPairingByToken,
   getMemory,
@@ -31,7 +35,9 @@ import {
   updateSession,
   type ArtifactType,
   type CaptureMode,
+  type CaptureSourceType,
   type CaptureStatus,
+  type CreateCaptureSourceInput,
   type CreateArtifactInput
 } from "@continuum/core";
 import { jsonError, readJsonBody } from "./http";
@@ -130,6 +136,37 @@ export function createApiApp({ db, runtime = {} }: ApiAppOptions) {
       return jsonError(context, 404, "Session not found");
     }
     return context.json({ artifacts: listArtifactsForSession(db, sessionId) });
+  });
+
+  app.post("/api/sessions/:id/sources", async (context) => {
+    const sessionId = context.req.param("id");
+    if (!getSession(db, sessionId)) {
+      return jsonError(context, 404, "Session not found");
+    }
+
+    const body = await readJsonBody<Omit<CreateCaptureSourceInput, "sessionId"> & { sourceType?: CaptureSourceType }>(context);
+    if (!body.sourceType) {
+      return jsonError(context, 400, "Capture source type is required");
+    }
+
+    try {
+      const source = createCaptureSource(db, {
+        ...body,
+        sessionId,
+        sourceType: body.sourceType
+      });
+      return context.json({ source }, 201);
+    } catch (error) {
+      return jsonError(context, 400, error instanceof Error ? error.message : "Unable to create capture source");
+    }
+  });
+
+  app.get("/api/sessions/:id/sources", (context) => {
+    const sessionId = context.req.param("id");
+    if (!getSession(db, sessionId)) {
+      return jsonError(context, 404, "Session not found");
+    }
+    return context.json({ sources: listCaptureSourcesForSession(db, sessionId) });
   });
 
   app.post("/api/sessions/:id/important-moments", async (context) => {
@@ -274,6 +311,27 @@ export function createApiApp({ db, runtime = {} }: ApiAppOptions) {
       provider: createAiProviderFromEnv().describe()
     })
   );
+
+  app.get("/api/capture/capabilities", (context) =>
+    context.json({
+      capabilities: listCaptureCapabilities()
+    })
+  );
+
+  app.post("/api/native-capture/events", async (context) => {
+    const body = await readJsonBody<Parameters<typeof ingestNativeCaptureEvent>[1]>(context);
+    if (!Array.isArray(body.artifacts)) {
+      return jsonError(context, 400, "Artifacts are required");
+    }
+
+    try {
+      const result = ingestNativeCaptureEvent(db, body);
+      return context.json(result, 201);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to ingest native capture event";
+      return jsonError(context, message.includes("active capture") ? 404 : 400, message);
+    }
+  });
 
   app.post("/api/extension/pair", async (context) => {
     const body = await readJsonBody<{ browserName?: string }>(context);

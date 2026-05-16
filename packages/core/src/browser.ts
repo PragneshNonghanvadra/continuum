@@ -4,10 +4,14 @@ export type {
   ArtifactType,
   CaptureArtifact,
   CaptureMode,
+  CapturePermissionState,
   CaptureSession,
+  CaptureSource,
+  CaptureSourceType,
   CaptureStatus,
   MemoryCard,
   MemoryLink,
+  NativeCaptureEventInput,
   ReaderPage,
   RevisionItem
 } from "./domain";

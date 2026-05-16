@@ -1,5 +1,6 @@
 import type {
   CaptureArtifact,
+  CaptureSource,
   CaptureSession,
   ExtensionPairing,
   ImportantMoment,
@@ -62,6 +63,40 @@ export function mapCaptureArtifact(row: CaptureArtifactRow): CaptureArtifact {
     timestampEnd: row.timestamp_end ?? undefined,
     metadata: row.metadata_json ? (JSON.parse(row.metadata_json) as Record<string, unknown>) : undefined,
     createdAt: row.created_at
+  };
+}
+
+export type CaptureSourceRow = {
+  id: string;
+  session_id: string;
+  source_type: CaptureSource["sourceType"];
+  app_name: string | null;
+  bundle_id: string | null;
+  window_title: string | null;
+  source_url: string | null;
+  file_path: string | null;
+  capture_capabilities_json: string | null;
+  permission_state: CaptureSource["permissionState"];
+  metadata_json: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export function mapCaptureSource(row: CaptureSourceRow): CaptureSource {
+  return {
+    appName: row.app_name ?? undefined,
+    bundleId: row.bundle_id ?? undefined,
+    captureCapabilities: row.capture_capabilities_json ? (JSON.parse(row.capture_capabilities_json) as string[]) : [],
+    createdAt: row.created_at,
+    filePath: row.file_path ?? undefined,
+    id: row.id,
+    metadata: row.metadata_json ? (JSON.parse(row.metadata_json) as Record<string, unknown>) : undefined,
+    permissionState: row.permission_state,
+    sessionId: row.session_id,
+    sourceType: row.source_type,
+    sourceUrl: row.source_url ?? undefined,
+    updatedAt: row.updated_at,
+    windowTitle: row.window_title ?? undefined
   };
 }
 

@@ -15,6 +15,7 @@ test("migrations create memory and capture ingestion tables", () => {
 
   expect(tables).toContain("capture_sessions");
   expect(tables).toContain("capture_artifacts");
+  expect(tables).toContain("capture_sources");
   expect(tables).toContain("memory_cards");
   expect(tables).toContain("reader_pages");
   expect(tables).toContain("revision_items");
