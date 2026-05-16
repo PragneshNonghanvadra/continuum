@@ -61,7 +61,7 @@ export {
 } from "./processing/transcription";
 export { MockMemoryProcessor } from "./processing/mockMemoryProcessor";
 export { AiMemoryProcessor, createDefaultMemoryProcessor } from "./processing/aiMemoryProcessor";
-export { processCapturedSession, type PersistedProcessResult } from "./processing/processSession";
+export { processCapturedSession, type PersistedProcessResult, type ProcessCapturedSessionOptions } from "./processing/processSession";
 export { exportMarkdownVault, type MarkdownExporter, type MarkdownExportOptions, type MarkdownExportResult } from "./export/markdownExporter";
 export { defaultRetentionPolicy, type RetentionPolicy } from "./privacy/retention";
 export { askMemory, type AskMemoryAnswer } from "./search/askMemory";

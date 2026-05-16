@@ -38,9 +38,13 @@ import { jsonError, readJsonBody } from "./http";
 
 export type ApiAppOptions = {
   db: Database;
+  runtime?: {
+    autoExport?: boolean;
+    exportDir?: string;
+  };
 };
 
-export function createApiApp({ db }: ApiAppOptions) {
+export function createApiApp({ db, runtime = {} }: ApiAppOptions) {
   const app = new Hono();
 
   app.get("/api/health", (context) =>
@@ -178,7 +182,10 @@ export function createApiApp({ db }: ApiAppOptions) {
 
   app.post("/api/sessions/:id/process", async (context) => {
     try {
-      const result = await processCapturedSession(db, context.req.param("id"));
+      const result = await processCapturedSession(db, context.req.param("id"), {
+        autoExport: runtime.autoExport,
+        exportDir: runtime.exportDir
+      });
       return context.json(result);
     } catch (error) {
       return jsonError(context, 404, error instanceof Error ? error.message : "Unable to process session");

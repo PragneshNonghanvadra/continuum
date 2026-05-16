@@ -33,3 +33,27 @@ test("exports approved memories and reader pages into an Obsidian-style vault", 
   expect(memoryMarkdown).toContain("status: approved");
   expect(memoryMarkdown).toContain("## Source evidence");
 });
+
+test("exports suggested session memories and an Obsidian graph when requested", async () => {
+  const db = createMemoryDatabase();
+  const session = createSession(db, { mode: "research", title: "Graph export session" });
+  createArtifact(db, {
+    artifactType: "browser_text",
+    content: "Knowledge graph exports should connect sessions, generated memories, topics, and links.",
+    sessionId: session.id
+  });
+  await processCapturedSession(db, session.id);
+
+  const exportDir = mkdtempSync(join(tmpdir(), "continuum-graph-export-"));
+  const result = exportMarkdownVault(db, { exportDir, includeGraph: true, includeSuggested: true });
+
+  const graphFile = join(exportDir, "Graph", "continuum-graph.json");
+  const graphMarkdown = join(exportDir, "Graph", "Continuum Knowledge Graph.md");
+  const graph = JSON.parse(readFileSync(graphFile, "utf8"));
+
+  expect(result.files).toContain(graphFile);
+  expect(result.files).toContain(graphMarkdown);
+  expect(graph.nodes.some((node: { type: string }) => node.type === "session")).toBe(true);
+  expect(graph.nodes.some((node: { type: string }) => node.type === "memory")).toBe(true);
+  expect(readFileSync(graphMarkdown, "utf8")).toContain("```mermaid");
+});

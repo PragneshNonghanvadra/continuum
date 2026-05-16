@@ -6,6 +6,7 @@ import { createReaderPage } from "../db/readerPageRepository";
 import { createRevisionItem } from "../db/revisionRepository";
 import { indexArtifact, indexMemory, indexReaderPage } from "../db/searchIndexRepository";
 import { getSession, updateSession } from "../db/sessionRepository";
+import { exportMarkdownVault, type MarkdownExportResult } from "../export/markdownExporter";
 import {
   attachMemoryToEntity,
   attachMemoryToTag,
@@ -18,17 +19,26 @@ import { createDefaultMemoryProcessor } from "./aiMemoryProcessor";
 import type { MemoryProcessor } from "./types";
 
 export type PersistedProcessResult = {
+  exportResult?: MarkdownExportResult;
   memoryCount: number;
   readerPageId: string;
   revisionItemCount: number;
   linkCount: number;
 };
 
+export type ProcessCapturedSessionOptions = {
+  autoExport?: boolean;
+  exportDir?: string;
+  processor?: MemoryProcessor;
+};
+
 export async function processCapturedSession(
   db: Database,
   sessionId: string,
-  processor: MemoryProcessor = createDefaultMemoryProcessor()
+  optionsOrProcessor: MemoryProcessor | ProcessCapturedSessionOptions = {}
 ): Promise<PersistedProcessResult> {
+  const options = isMemoryProcessor(optionsOrProcessor) ? { processor: optionsOrProcessor } : optionsOrProcessor;
+  const processor = options.processor ?? createDefaultMemoryProcessor();
   const session = getSession(db, sessionId);
   if (!session) {
     throw new Error("Session not found");
@@ -82,10 +92,23 @@ export async function processCapturedSession(
     status: "processed"
   });
 
+  const exportResult = options.autoExport
+    ? exportMarkdownVault(db, {
+        exportDir: options.exportDir,
+        includeGraph: true,
+        includeSuggested: true
+      })
+    : undefined;
+
   return {
+    exportResult,
     linkCount,
     memoryCount: createdMemories.length,
     readerPageId: readerPage.id,
     revisionItemCount: revisionItems.length
   };
+}
+
+function isMemoryProcessor(value: MemoryProcessor | ProcessCapturedSessionOptions): value is MemoryProcessor {
+  return typeof (value as MemoryProcessor).process === "function";
 }

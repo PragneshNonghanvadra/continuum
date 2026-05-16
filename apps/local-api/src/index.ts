@@ -3,7 +3,13 @@ import { createApiApp } from "./app";
 
 const db = openContinuumDatabase();
 ensureSeedData(db);
-const app = createApiApp({ db });
+const app = createApiApp({
+  db,
+  runtime: {
+    autoExport: process.env.CONTINUUM_AUTO_EXPORT !== "false",
+    exportDir: process.env.CONTINUUM_EXPORT_DIR
+  }
+});
 
 const port = Number(process.env.CONTINUUM_API_PORT ?? 5174);
 
