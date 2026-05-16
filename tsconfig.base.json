@@ -17,6 +17,7 @@
     "baseUrl": ".",
     "paths": {
       "@continuum/core": ["packages/core/src/index.ts"],
+      "@continuum/core/browser": ["packages/core/src/browser.ts"],
       "@continuum/core/*": ["packages/core/src/*"]
     }
   }

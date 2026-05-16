@@ -1,4 +1,6 @@
-export const CONTINUUM_PRODUCT_NAME = "Continuum";
+export { CONTINUUM_PRODUCT_NAME } from "./metadata";
+
+import { CONTINUUM_PRODUCT_NAME } from "./metadata";
 
 export type ApiHealth = {
   ok: boolean;

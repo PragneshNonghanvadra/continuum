@@ -1,4 +1,19 @@
-import type { ArtifactType } from "@continuum/core";
+type ArtifactType =
+  | "article_text"
+  | "transcript"
+  | "ocr_text"
+  | "screenshot"
+  | "keyframe"
+  | "audio_chunk"
+  | "video_metadata"
+  | "ai_chat"
+  | "manual_note"
+  | "url_metadata"
+  | "browser_text"
+  | "browser_selection"
+  | "browser_visible_text"
+  | "video_caption"
+  | "audio_metadata";
 
 export type BrowserVideoEvidence = {
   captionText?: string;

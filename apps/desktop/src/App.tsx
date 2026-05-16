@@ -10,7 +10,7 @@ import {
   type SearchResult,
   type AskMemoryAnswer,
   type RevisionItem
-} from "@continuum/core";
+} from "@continuum/core/browser";
 import {
   askMemoryRequest,
   approveMemoryRequest,
