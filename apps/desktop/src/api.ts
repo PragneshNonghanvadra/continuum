@@ -168,7 +168,8 @@ export async function markImportantRequest(id: string, note: string) {
 export async function processSessionRequest(id: string) {
   const response = await fetch(`${API_BASE_URL}/sessions/${id}/process`, { method: "POST" });
   if (!response.ok) {
-    throw new Error("Unable to process capture session");
+    const payload = await response.json().catch(() => undefined);
+    throw new Error(payload?.error ?? "Unable to process capture session");
   }
   return (await response.json()) as { exportResult?: { exportDir: string; fileCount: number }; memoryCount: number; readerPageId: string };
 }

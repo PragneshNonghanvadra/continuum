@@ -9,10 +9,15 @@ import type {
   ReaderPageDraft
 } from "./types";
 
+export type AiMemoryProcessorOptions = {
+  requireProvider?: boolean;
+};
+
 export class AiMemoryProcessor implements MemoryProcessor {
   constructor(
     private readonly provider: AiGenerationProvider = createAiProviderFromEnv(),
-    private readonly fallback: MemoryProcessor = new MockMemoryProcessor()
+    private readonly fallback: MemoryProcessor = new MockMemoryProcessor(),
+    private readonly options: AiMemoryProcessorOptions = {}
   ) {}
 
   async processSession(sessionId: string): Promise<ProcessSessionResult> {
@@ -21,6 +26,9 @@ export class AiMemoryProcessor implements MemoryProcessor {
 
   async process(input: ProcessInput): Promise<ProcessSessionResult> {
     if (!this.provider.isConfigured()) {
+      if (this.options.requireProvider) {
+        throw new Error("AI provider is required but is not configured.");
+      }
       return this.fallback.process(input);
     }
 
@@ -31,8 +39,17 @@ export class AiMemoryProcessor implements MemoryProcessor {
         schemaName: "ProcessSessionResult",
         task: "process_session"
       });
-      return isProcessSessionResult(result) ? result : this.fallback.process(input);
-    } catch {
+      if (!isProcessSessionResult(result)) {
+        if (this.options.requireProvider) {
+          throw new Error("AI provider returned invalid ProcessSessionResult.");
+        }
+        return this.fallback.process(input);
+      }
+      return result;
+    } catch (error) {
+      if (this.options.requireProvider) {
+        throw error instanceof Error ? error : new Error("AI provider failed.");
+      }
       return this.fallback.process(input);
     }
   }
@@ -55,7 +72,14 @@ export class AiMemoryProcessor implements MemoryProcessor {
 }
 
 export function createDefaultMemoryProcessor() {
-  return new AiMemoryProcessor(createAiProviderFromEnv());
+  return new AiMemoryProcessor(createAiProviderFromEnv(), undefined, {
+    requireProvider: parseBoolean(process.env.CONTINUUM_AI_REQUIRE_PROVIDER)
+  });
+}
+
+function parseBoolean(value: string | undefined) {
+  if (!value) return false;
+  return ["1", "true", "yes", "on"].includes(value.toLowerCase());
 }
 
 function buildProcessPrompt(input: ProcessInput) {

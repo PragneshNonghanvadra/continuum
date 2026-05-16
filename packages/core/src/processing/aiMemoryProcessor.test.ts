@@ -85,6 +85,20 @@ test("AI memory processor falls back when provider returns invalid JSON shape", 
   expect(result.readerPage.title).toBe("AI-first processing");
 });
 
+test("AI memory processor can require a configured provider", async () => {
+  const provider = new RecordingAiProvider(aiResult, false);
+  const processor = new AiMemoryProcessor(provider, undefined, { requireProvider: true });
+
+  await expect(processor.process({ artifacts, existingMemories: [], session })).rejects.toThrow("AI provider is required");
+});
+
+test("AI memory processor fails strict mode on invalid provider output", async () => {
+  const provider = new RecordingAiProvider({ memories: [] });
+  const processor = new AiMemoryProcessor(provider, undefined, { requireProvider: true });
+
+  await expect(processor.process({ artifacts, existingMemories: [], session })).rejects.toThrow("AI provider returned invalid");
+});
+
 class RecordingAiProvider implements AiGenerationProvider {
   readonly id = "recording";
   readonly kind = "mock" as const;
