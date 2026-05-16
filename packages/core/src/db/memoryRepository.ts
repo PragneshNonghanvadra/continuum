@@ -57,3 +57,43 @@ export function updateMemoryStatus(db: Database, id: string, status: MemoryCard[
   db.prepare("update memory_cards set status = ?, updated_at = ? where id = ?").run(status, new Date().toISOString(), id);
   return getMemory(db, id);
 }
+
+export type UpdateMemoryInput = Partial<
+  Pick<MemoryCard, "category" | "fullText" | "importance" | "memoryType" | "status" | "summary" | "title">
+>;
+
+export function updateMemory(db: Database, id: string, input: UpdateMemoryInput): MemoryCard | undefined {
+  const existing = getMemory(db, id);
+  if (!existing) {
+    return undefined;
+  }
+
+  const next = {
+    category: input.category ?? existing.category,
+    fullText: input.fullText ?? existing.fullText,
+    importance: input.importance ?? existing.importance,
+    memoryType: input.memoryType ?? existing.memoryType,
+    status: input.status ?? existing.status,
+    summary: input.summary ?? existing.summary,
+    title: input.title ?? existing.title,
+    updatedAt: new Date().toISOString()
+  };
+
+  db.prepare(`
+    update memory_cards
+    set title = ?, summary = ?, full_text = ?, category = ?, memory_type = ?, importance = ?, status = ?, updated_at = ?
+    where id = ?
+  `).run(
+    next.title,
+    next.summary,
+    next.fullText,
+    next.category,
+    next.memoryType,
+    next.importance,
+    next.status,
+    next.updatedAt,
+    id
+  );
+
+  return getMemory(db, id);
+}

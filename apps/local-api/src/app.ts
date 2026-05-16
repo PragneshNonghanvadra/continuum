@@ -9,11 +9,16 @@ import {
   deleteSession,
   getSession,
   getExtensionPairingByToken,
+  getMemory,
   listArtifactsForSession,
   listImportantMomentsForSession,
+  listMemoryLinks,
+  listMemoryLinksForMemory,
   listMemories,
   listSessions,
   processCapturedSession,
+  updateMemory,
+  updateMemoryStatus,
   updateSession,
   type ArtifactType,
   type CaptureMode,
@@ -175,6 +180,31 @@ export function createApiApp({ db }: ApiAppOptions) {
     const status = context.req.query("status");
     return context.json({ memories: listMemories(db, status ? { status: status as never } : {}) });
   });
+
+  app.get("/api/memories/:id", (context) => {
+    const memory = getMemory(db, context.req.param("id"));
+    return memory ? context.json({ memory }) : jsonError(context, 404, "Memory not found");
+  });
+
+  app.patch("/api/memories/:id", async (context) => {
+    const body = await readJsonBody<Parameters<typeof updateMemory>[2]>(context);
+    const memory = updateMemory(db, context.req.param("id"), body);
+    return memory ? context.json({ memory }) : jsonError(context, 404, "Memory not found");
+  });
+
+  app.post("/api/memories/:id/approve", (context) => {
+    const memory = updateMemoryStatus(db, context.req.param("id"), "approved");
+    return memory ? context.json({ memory }) : jsonError(context, 404, "Memory not found");
+  });
+
+  app.post("/api/memories/:id/reject", (context) => {
+    const memory = updateMemoryStatus(db, context.req.param("id"), "rejected");
+    return memory ? context.json({ memory }) : jsonError(context, 404, "Memory not found");
+  });
+
+  app.get("/api/memories/:id/links", (context) => context.json({ links: listMemoryLinksForMemory(db, context.req.param("id")) }));
+
+  app.get("/api/memory-links", (context) => context.json({ links: listMemoryLinks(db) }));
 
   app.post("/api/extension/pair", async (context) => {
     const body = await readJsonBody<{ browserName?: string }>(context);

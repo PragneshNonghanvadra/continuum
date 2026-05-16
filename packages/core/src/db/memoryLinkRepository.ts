@@ -21,3 +21,12 @@ export function createMemoryLink(db: Database, sourceMemoryId: string, draft: Li
 export function listMemoryLinks(db: Database): MemoryLink[] {
   return db.query<MemoryLinkRow, []>("select * from memory_links order by created_at desc").all().map(mapMemoryLink);
 }
+
+export function listMemoryLinksForMemory(db: Database, memoryId: string): MemoryLink[] {
+  return db
+    .query<MemoryLinkRow, [string, string]>(
+      "select * from memory_links where source_memory_id = ? or target_memory_id = ? order by score desc, created_at desc"
+    )
+    .all(memoryId, memoryId)
+    .map(mapMemoryLink);
+}

@@ -1,33 +1,41 @@
-import type { ApiHealth, CaptureArtifact, CaptureMode, CaptureSession, CaptureStatus } from "@continuum/core";
+import type { ApiHealth, CaptureArtifact, CaptureMode, CaptureSession, CaptureStatus, MemoryCard, MemoryLink } from "@continuum/core";
 
 const API_BASE_URL = "http://127.0.0.1:5174/api";
 
 export type AppSnapshot = {
   health?: ApiHealth;
+  links: MemoryLink[];
+  memories: MemoryCard[];
   sessions: CaptureSession[];
   error?: string;
 };
 
 export async function fetchAppSnapshot(): Promise<AppSnapshot> {
   try {
-    const [healthResponse, sessionsResponse] = await Promise.all([
+    const [healthResponse, sessionsResponse, memoriesResponse, linksResponse] = await Promise.all([
       fetch(`${API_BASE_URL}/health`),
-      fetch(`${API_BASE_URL}/sessions`)
+      fetch(`${API_BASE_URL}/sessions`),
+      fetch(`${API_BASE_URL}/memories`),
+      fetch(`${API_BASE_URL}/memory-links`)
     ]);
 
-    if (!healthResponse.ok || !sessionsResponse.ok) {
-      return { error: "Continuum local API is not ready.", sessions: [] };
+    if (!healthResponse.ok || !sessionsResponse.ok || !memoriesResponse.ok || !linksResponse.ok) {
+      return { error: "Continuum local API is not ready.", links: [], memories: [], sessions: [] };
     }
 
     const health = (await healthResponse.json()) as ApiHealth;
     const sessionsPayload = (await sessionsResponse.json()) as { sessions: CaptureSession[] };
+    const memoriesPayload = (await memoriesResponse.json()) as { memories: MemoryCard[] };
+    const linksPayload = (await linksResponse.json()) as { links: MemoryLink[] };
 
     return {
       health,
+      links: linksPayload.links,
+      memories: memoriesPayload.memories,
       sessions: sessionsPayload.sessions
     };
   } catch {
-    return { error: "Continuum local API is not reachable.", sessions: [] };
+    return { error: "Continuum local API is not reachable.", links: [], memories: [], sessions: [] };
   }
 }
 
@@ -76,5 +84,31 @@ export async function markImportantRequest(id: string, note: string) {
   });
   if (!response.ok) {
     throw new Error("Unable to mark important moment");
+  }
+}
+
+export async function updateMemoryRequest(id: string, input: Partial<Pick<MemoryCard, "status" | "summary" | "title">>) {
+  const response = await fetch(`${API_BASE_URL}/memories/${id}`, {
+    body: JSON.stringify(input),
+    headers: { "content-type": "application/json" },
+    method: "PATCH"
+  });
+  if (!response.ok) {
+    throw new Error("Unable to update memory");
+  }
+  return ((await response.json()) as { memory: MemoryCard }).memory;
+}
+
+export async function approveMemoryRequest(id: string) {
+  const response = await fetch(`${API_BASE_URL}/memories/${id}/approve`, { method: "POST" });
+  if (!response.ok) {
+    throw new Error("Unable to approve memory");
+  }
+}
+
+export async function rejectMemoryRequest(id: string) {
+  const response = await fetch(`${API_BASE_URL}/memories/${id}/reject`, { method: "POST" });
+  if (!response.ok) {
+    throw new Error("Unable to reject memory");
   }
 }

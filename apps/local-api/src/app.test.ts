@@ -177,3 +177,41 @@ test("process session API converts captured artifacts into suggested memories", 
   const memoriesResponse = await app.request("/api/memories?status=suggested");
   expect((await memoriesResponse.json()).memories[0].status).toBe("suggested");
 });
+
+test("memory review API edits, approves, rejects, and archives suggested cards", async () => {
+  const app = createApiApp({ db: createMemoryDatabase() });
+  const sessionResponse = await app.request("/api/sessions", {
+    body: JSON.stringify({ mode: "article", title: "Review session" }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  const { session } = await sessionResponse.json();
+  await app.request(`/api/sessions/${session.id}/artifacts`, {
+    body: JSON.stringify({ artifactType: "article_text", content: "SQLite should remain the canonical database." }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  await app.request(`/api/sessions/${session.id}/process`, { method: "POST" });
+  const memories = await (await app.request("/api/memories?status=suggested")).json();
+  const memoryId = memories.memories[0].id;
+
+  const patchResponse = await app.request(`/api/memories/${memoryId}`, {
+    body: JSON.stringify({ title: "SQLite remains canonical" }),
+    headers: { "content-type": "application/json" },
+    method: "PATCH"
+  });
+  expect((await patchResponse.json()).memory.title).toBe("SQLite remains canonical");
+
+  const approveResponse = await app.request(`/api/memories/${memoryId}/approve`, { method: "POST" });
+  expect((await approveResponse.json()).memory.status).toBe("approved");
+
+  const rejectResponse = await app.request(`/api/memories/${memoryId}/reject`, { method: "POST" });
+  expect((await rejectResponse.json()).memory.status).toBe("rejected");
+
+  const archiveResponse = await app.request(`/api/memories/${memoryId}`, {
+    body: JSON.stringify({ status: "archived" }),
+    headers: { "content-type": "application/json" },
+    method: "PATCH"
+  });
+  expect((await archiveResponse.json()).memory.status).toBe("archived");
+});

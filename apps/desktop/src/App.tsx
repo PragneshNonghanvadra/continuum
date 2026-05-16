@@ -1,16 +1,26 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { CONTINUUM_PRODUCT_NAME, captureModes, type CaptureMode, type CaptureSession } from "@continuum/core";
 import {
+  CONTINUUM_PRODUCT_NAME,
+  captureModes,
+  type CaptureMode,
+  type CaptureSession,
+  type MemoryCard,
+  type MemoryLink
+} from "@continuum/core";
+import {
+  approveMemoryRequest,
   createSessionRequest,
   fetchAppSnapshot,
   fetchSessionArtifacts,
   markImportantRequest,
+  rejectMemoryRequest,
+  updateMemoryRequest,
   updateSessionRequest,
   type AppSnapshot
 } from "./api";
 import { navigationItems, type NavigationItem } from "./navigation";
 
-const emptySnapshot: AppSnapshot = { sessions: [] };
+const emptySnapshot: AppSnapshot = { links: [], memories: [], sessions: [] };
 
 export function App() {
   const [activeView, setActiveView] = useState<NavigationItem["id"]>("home");
@@ -56,7 +66,7 @@ export function App() {
           <h1>{activeLabel}</h1>
         </header>
         {snapshot.error ? <div className="notice">{snapshot.error}</div> : null}
-        <View refresh={refreshSnapshot} view={activeView} sessions={snapshot.sessions} />
+        <View links={snapshot.links} memories={snapshot.memories} refresh={refreshSnapshot} view={activeView} sessions={snapshot.sessions} />
       </section>
     </main>
   );
@@ -64,19 +74,27 @@ export function App() {
 
 function View({
   refresh,
+  links,
+  memories,
   sessions,
   view
 }: {
+  links: MemoryLink[];
+  memories: MemoryCard[];
   refresh: () => Promise<void>;
   sessions: CaptureSession[];
   view: NavigationItem["id"];
 }) {
   if (view === "home") {
-    return <Home sessions={sessions} />;
+    return <Home memories={memories} sessions={sessions} />;
   }
 
   if (view === "capture") {
     return <CaptureView refresh={refresh} sessions={sessions} />;
+  }
+
+  if (view === "inbox") {
+    return <InboxView links={links} memories={memories} refresh={refresh} sessions={sessions} />;
   }
 
   if (view === "settings") {
@@ -274,8 +292,10 @@ function CaptureView({ refresh, sessions }: { refresh: () => Promise<void>; sess
   );
 }
 
-function Home({ sessions }: { sessions: CaptureSession[] }) {
+function Home({ memories, sessions }: { memories: MemoryCard[]; sessions: CaptureSession[] }) {
   const recentSessions = sessions.slice(0, 5);
+  const suggestedCount = memories.filter((memory) => memory.status === "suggested").length;
+  const approvedCount = memories.filter((memory) => memory.status === "approved").length;
 
   return (
     <div className="dashboard-grid">
@@ -296,7 +316,10 @@ function Home({ sessions }: { sessions: CaptureSession[] }) {
         )}
       </Panel>
       <Panel title="Suggested Memories">
-        <p>Suggested cards will appear here after session processing.</p>
+        <p>{suggestedCount} cards need review.</p>
+      </Panel>
+      <Panel title="Approved Memories">
+        <p>{approvedCount} approved cards are ready for search, topics, and reader pages.</p>
       </Panel>
       <Panel title="Active Topics">
         <p>Topics are generated from approved memory cards.</p>
@@ -305,6 +328,100 @@ function Home({ sessions }: { sessions: CaptureSession[] }) {
         <p>Learning and interview sessions generate revision prompts after processing.</p>
       </Panel>
     </div>
+  );
+}
+
+function InboxView({
+  links,
+  memories,
+  refresh,
+  sessions
+}: {
+  links: MemoryLink[];
+  memories: MemoryCard[];
+  refresh: () => Promise<void>;
+  sessions: CaptureSession[];
+}) {
+  const suggested = memories.filter((memory) => memory.status === "suggested");
+
+  if (suggested.length === 0) {
+    return (
+      <Panel title="Inbox">
+        <p>No suggested memories are waiting. Process a capture session to generate review cards.</p>
+      </Panel>
+    );
+  }
+
+  return (
+    <div className="inbox-list">
+      {suggested.map((memory) => (
+        <MemoryReviewCard key={memory.id} links={links} memory={memory} refresh={refresh} sessions={sessions} />
+      ))}
+    </div>
+  );
+}
+
+function MemoryReviewCard({
+  links,
+  memory,
+  refresh,
+  sessions
+}: {
+  links: MemoryLink[];
+  memory: MemoryCard;
+  refresh: () => Promise<void>;
+  sessions: CaptureSession[];
+}) {
+  const [title, setTitle] = useState(memory.title);
+  const [summary, setSummary] = useState(memory.summary);
+  const sourceSession = sessions.find((session) => session.id === memory.sessionId);
+  const relatedLinks = links.filter((link) => link.sourceMemoryId === memory.id || link.targetMemoryId === memory.id);
+
+  async function run(action: () => Promise<void>) {
+    await action();
+    await refresh();
+  }
+
+  return (
+    <section className="memory-card">
+      <div className="memory-card__meta">
+        <span>{memory.category}</span>
+        <span>{memory.memoryType}</span>
+        <span>importance {memory.importance}</span>
+      </div>
+      <label>
+        Title
+        <input onChange={(event) => setTitle(event.target.value)} value={title} />
+      </label>
+      <label>
+        Summary
+        <textarea onChange={(event) => setSummary(event.target.value)} rows={4} value={summary} />
+      </label>
+      {sourceSession ? <p className="source-line">Source session: {sourceSession.title}</p> : null}
+      {relatedLinks.length > 0 ? (
+        <ul className="related-list">
+          {relatedLinks.map((link) => (
+            <li key={link.id}>{link.reason}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="source-line">No related-memory links suggested yet.</p>
+      )}
+      <div className="button-row">
+        <button className="secondary-button" onClick={() => run(() => updateMemoryRequest(memory.id, { summary, title }).then())} type="button">
+          Save Edit
+        </button>
+        <button className="primary-button" onClick={() => run(() => approveMemoryRequest(memory.id))} type="button">
+          Approve
+        </button>
+        <button className="secondary-button" onClick={() => run(() => rejectMemoryRequest(memory.id))} type="button">
+          Reject
+        </button>
+        <button className="secondary-button" onClick={() => run(() => updateMemoryRequest(memory.id, { status: "archived" }).then())} type="button">
+          Archive
+        </button>
+      </div>
+    </section>
   );
 }
 

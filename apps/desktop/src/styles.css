@@ -238,8 +238,50 @@ nav {
 }
 
 .session-list span,
-.settings-list dd {
+.settings-list dd,
+.source-line {
   color: #67645d;
+}
+
+.inbox-list {
+  display: grid;
+  gap: 16px;
+  margin-top: 28px;
+}
+
+.memory-card {
+  background: #ffffff;
+  border: 1px solid #dedbd2;
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+}
+
+.memory-card label {
+  display: grid;
+  font-weight: 700;
+  gap: 6px;
+}
+
+.memory-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.memory-card__meta span {
+  background: #f5f3ed;
+  border-radius: 999px;
+  color: #55534e;
+  font-size: 12px;
+  padding: 5px 8px;
+}
+
+.related-list {
+  color: #55534e;
+  margin: 0;
+  padding-left: 20px;
 }
 
 .settings-list {
