@@ -105,3 +105,96 @@ export type ExtensionPairing = {
   createdAt: string;
   updatedAt: string;
 };
+
+export const memoryCategories = [
+  "personal_growth",
+  "professional_growth",
+  "finance",
+  "learning",
+  "project",
+  "career",
+  "idea",
+  "health",
+  "relationship",
+  "other"
+] as const;
+
+export type MemoryCategory = (typeof memoryCategories)[number];
+
+export const memoryTypes = [
+  "insight",
+  "decision",
+  "question",
+  "todo",
+  "resource",
+  "learning",
+  "reflection",
+  "fact",
+  "contradiction",
+  "goal"
+] as const;
+
+export type MemoryType = (typeof memoryTypes)[number];
+
+export type MemoryCard = {
+  id: string;
+  sessionId?: string;
+  title: string;
+  summary: string;
+  fullText: string;
+  category: MemoryCategory;
+  memoryType: MemoryType;
+  importance: 1 | 2 | 3 | 4 | 5;
+  confidence: number;
+  status: "suggested" | "approved" | "rejected" | "archived";
+  evidence?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ReaderPage = {
+  id: string;
+  pageType: "session" | "topic" | "revision_pack" | "source" | "memory_collection";
+  title: string;
+  slug: string;
+  summary: string;
+  contentMarkdown: string;
+  sourceSessionId?: string;
+  topicKey?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type MemoryLink = {
+  id: string;
+  sourceMemoryId: string;
+  targetMemoryId: string;
+  relationType:
+    | "similar_topic"
+    | "same_project"
+    | "supports"
+    | "contradicts"
+    | "updates"
+    | "expands"
+    | "revisits"
+    | "derived_from"
+    | "same_goal"
+    | "same_entity";
+  score: number;
+  reason: string;
+  status: "suggested" | "approved" | "rejected";
+  createdAt: string;
+};
+
+export type RevisionItem = {
+  id: string;
+  memoryId?: string;
+  readerPageId?: string;
+  question: string;
+  answer?: string;
+  difficulty: "easy" | "medium" | "hard";
+  status: "new" | "reviewed" | "mastered" | "skipped";
+  dueAt?: string;
+  createdAt: string;
+  updatedAt: string;
+};

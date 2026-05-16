@@ -17,6 +17,12 @@ export type {
   CreateSessionInput,
   ExtensionPairing,
   ImportantMoment,
+  MemoryCard,
+  MemoryCategory,
+  MemoryLink,
+  MemoryType,
+  ReaderPage,
+  RevisionItem,
   UpdateSessionInput
 } from "./domain";
 export { artifactTypes, captureModes, captureStatuses } from "./domain";
@@ -36,3 +42,13 @@ export {
   type TranscriptionProvider,
   type TranscriptionResult
 } from "./processing/transcription";
+export { MockMemoryProcessor } from "./processing/mockMemoryProcessor";
+export type {
+  LinkDraft,
+  MemoryDraft,
+  MemoryProcessor,
+  ProcessInput,
+  ProcessSessionResult,
+  ReaderPageDraft,
+  RevisionItemDraft
+} from "./processing/types";
