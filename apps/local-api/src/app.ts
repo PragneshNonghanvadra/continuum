@@ -2,11 +2,14 @@ import type { Database } from "bun:sqlite";
 import { Hono } from "hono";
 import {
   CONTINUUM_PRODUCT_NAME,
+  createArtifact,
   createSession,
   deleteSession,
   getSession,
+  listArtifactsForSession,
   listSessions,
   updateSession,
+  type ArtifactType,
   type CaptureMode,
   type CaptureStatus
 } from "@continuum/core";
@@ -59,6 +62,49 @@ export function createApiApp({ db }: ApiAppOptions) {
   app.get("/api/sessions/:id", (context) => {
     const session = getSession(db, context.req.param("id"));
     return session ? context.json({ session }) : jsonError(context, 404, "Session not found");
+  });
+
+  app.post("/api/sessions/:id/artifacts", async (context) => {
+    const sessionId = context.req.param("id");
+    if (!getSession(db, sessionId)) {
+      return jsonError(context, 404, "Session not found");
+    }
+
+    const body = await readJsonBody<{
+      artifactType?: ArtifactType;
+      content?: string;
+      filePath?: string;
+      metadata?: Record<string, unknown>;
+      timestampEnd?: number;
+      timestampStart?: number;
+    }>(context);
+
+    if (!body.artifactType) {
+      return jsonError(context, 400, "Artifact type is required");
+    }
+
+    try {
+      const artifact = createArtifact(db, {
+        artifactType: body.artifactType,
+        content: body.content,
+        filePath: body.filePath,
+        metadata: body.metadata,
+        sessionId,
+        timestampEnd: body.timestampEnd,
+        timestampStart: body.timestampStart
+      });
+      return context.json({ artifact }, 201);
+    } catch (error) {
+      return jsonError(context, 400, error instanceof Error ? error.message : "Unable to create artifact");
+    }
+  });
+
+  app.get("/api/sessions/:id/artifacts", (context) => {
+    const sessionId = context.req.param("id");
+    if (!getSession(db, sessionId)) {
+      return jsonError(context, 404, "Session not found");
+    }
+    return context.json({ artifacts: listArtifactsForSession(db, sessionId) });
   });
 
   app.patch("/api/sessions/:id", async (context) => {

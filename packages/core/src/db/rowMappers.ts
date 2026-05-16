@@ -1,4 +1,4 @@
-import type { CaptureSession } from "../domain";
+import type { CaptureArtifact, CaptureSession } from "../domain";
 
 export type CaptureSessionRow = {
   id: string;
@@ -27,5 +27,31 @@ export function mapCaptureSession(row: CaptureSessionRow): CaptureSession {
     endedAt: row.ended_at ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at
+  };
+}
+
+export type CaptureArtifactRow = {
+  id: string;
+  session_id: string;
+  artifact_type: CaptureArtifact["artifactType"];
+  content: string | null;
+  file_path: string | null;
+  timestamp_start: number | null;
+  timestamp_end: number | null;
+  metadata_json: string | null;
+  created_at: string;
+};
+
+export function mapCaptureArtifact(row: CaptureArtifactRow): CaptureArtifact {
+  return {
+    id: row.id,
+    sessionId: row.session_id,
+    artifactType: row.artifact_type,
+    content: row.content ?? undefined,
+    filePath: row.file_path ?? undefined,
+    timestampStart: row.timestamp_start ?? undefined,
+    timestampEnd: row.timestamp_end ?? undefined,
+    metadata: row.metadata_json ? (JSON.parse(row.metadata_json) as Record<string, unknown>) : undefined,
+    createdAt: row.created_at
   };
 }

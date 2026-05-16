@@ -15,6 +15,26 @@ export const captureStatuses = ["active", "paused", "processing", "processed", "
 
 export type CaptureStatus = (typeof captureStatuses)[number];
 
+export const artifactTypes = [
+  "article_text",
+  "transcript",
+  "ocr_text",
+  "screenshot",
+  "keyframe",
+  "audio_chunk",
+  "video_metadata",
+  "ai_chat",
+  "manual_note",
+  "url_metadata",
+  "browser_text",
+  "browser_selection",
+  "browser_visible_text",
+  "video_caption",
+  "audio_metadata"
+] as const;
+
+export type ArtifactType = (typeof artifactTypes)[number];
+
 export type CaptureSession = {
   id: string;
   title: string;
@@ -38,3 +58,25 @@ export type CreateSessionInput = {
 };
 
 export type UpdateSessionInput = Partial<Pick<CaptureSession, "title" | "status" | "sourceApp" | "sourceUrl" | "sourceTitle" | "endedAt">>;
+
+export type CaptureArtifact = {
+  id: string;
+  sessionId: string;
+  artifactType: ArtifactType;
+  content?: string;
+  filePath?: string;
+  timestampStart?: number;
+  timestampEnd?: number;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type CreateArtifactInput = {
+  sessionId: string;
+  artifactType: ArtifactType;
+  content?: string;
+  filePath?: string;
+  timestampStart?: number;
+  timestampEnd?: number;
+  metadata?: Record<string, unknown>;
+};

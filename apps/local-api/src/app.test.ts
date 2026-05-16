@@ -32,3 +32,31 @@ test("session API creates, lists, patches, and soft-deletes sessions", async () 
   const hiddenResponse = await app.request("/api/sessions");
   expect((await hiddenResponse.json()).sessions).toEqual([]);
 });
+
+test("artifact API ingests and lists session artifacts", async () => {
+  const app = createApiApp({ db: createMemoryDatabase() });
+  const createdSessionResponse = await app.request("/api/sessions", {
+    body: JSON.stringify({ mode: "ai_chat", title: "AI exploration" }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  const { session } = await createdSessionResponse.json();
+
+  const artifactResponse = await app.request(`/api/sessions/${session.id}/artifacts`, {
+    body: JSON.stringify({
+      artifactType: "ai_chat",
+      content: "User: explain indexing\nAssistant: FTS is useful.",
+      metadata: { source: "browser" }
+    }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+
+  expect(artifactResponse.status).toBe(201);
+  expect((await artifactResponse.json()).artifact.artifactType).toBe("ai_chat");
+
+  const listResponse = await app.request(`/api/sessions/${session.id}/artifacts`);
+  const listed = await listResponse.json();
+  expect(listed.artifacts).toHaveLength(1);
+  expect(listed.artifacts[0].metadata).toEqual({ source: "browser" });
+});

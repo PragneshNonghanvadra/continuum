@@ -6,7 +6,18 @@ export type ApiHealth = {
   version: string;
 };
 
-export type { CaptureMode, CaptureSession, CaptureStatus, CreateSessionInput, UpdateSessionInput } from "./domain";
+export type {
+  ArtifactType,
+  CaptureArtifact,
+  CaptureMode,
+  CaptureSession,
+  CaptureStatus,
+  CreateArtifactInput,
+  CreateSessionInput,
+  UpdateSessionInput
+} from "./domain";
+export { artifactTypes, captureModes, captureStatuses } from "./domain";
+export { createArtifact, listArtifactsForSession } from "./db/artifactRepository";
 export { createMemoryDatabase, openContinuumDatabase } from "./db/connection";
 export { ensureContinuumDataDir, getContinuumDataDir, getContinuumDatabasePath } from "./db/dataDirectory";
 export { runMigrations } from "./db/migrations";
