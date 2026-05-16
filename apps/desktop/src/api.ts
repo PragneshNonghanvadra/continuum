@@ -6,7 +6,9 @@ import type {
   CaptureStatus,
   MemoryCard,
   MemoryLink,
-  ReaderPage
+  ReaderPage,
+  SearchResult,
+  AskMemoryAnswer
 } from "@continuum/core";
 
 const API_BASE_URL = "http://127.0.0.1:5174/api";
@@ -124,4 +126,24 @@ export async function rejectMemoryRequest(id: string) {
   if (!response.ok) {
     throw new Error("Unable to reject memory");
   }
+}
+
+export async function searchMemoryRequest(q: string) {
+  const response = await fetch(`${API_BASE_URL}/search?q=${encodeURIComponent(q)}`);
+  if (!response.ok) {
+    throw new Error("Unable to search memory");
+  }
+  return ((await response.json()) as { results: SearchResult[] }).results;
+}
+
+export async function askMemoryRequest(question: string): Promise<AskMemoryAnswer> {
+  const response = await fetch(`${API_BASE_URL}/ask-memory`, {
+    body: JSON.stringify({ question }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  if (!response.ok) {
+    throw new Error("Unable to ask memory");
+  }
+  return (await response.json()) as AskMemoryAnswer;
 }

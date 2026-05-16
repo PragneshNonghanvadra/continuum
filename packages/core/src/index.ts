@@ -48,6 +48,8 @@ export {
 } from "./processing/transcription";
 export { MockMemoryProcessor } from "./processing/mockMemoryProcessor";
 export { processCapturedSession, type PersistedProcessResult } from "./processing/processSession";
+export { askMemory, type AskMemoryAnswer } from "./search/askMemory";
+export { searchMemory, type SearchFilters, type SearchResult } from "./search/search";
 export type {
   LinkDraft,
   MemoryDraft,

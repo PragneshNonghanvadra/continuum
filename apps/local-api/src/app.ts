@@ -2,6 +2,7 @@ import type { Database } from "bun:sqlite";
 import { Hono } from "hono";
 import {
   CONTINUUM_PRODUCT_NAME,
+  askMemory,
   createArtifact,
   createExtensionPairing,
   createImportantMoment,
@@ -18,6 +19,7 @@ import {
   listReaderPages,
   listSessions,
   processCapturedSession,
+  searchMemory,
   getReaderPage,
   updateMemory,
   updateMemoryStatus,
@@ -213,6 +215,24 @@ export function createApiApp({ db }: ApiAppOptions) {
   app.get("/api/reader-pages/:id", (context) => {
     const readerPage = getReaderPage(db, context.req.param("id"));
     return readerPage ? context.json({ readerPage }) : jsonError(context, 404, "Reader page not found");
+  });
+
+  app.get("/api/search", (context) =>
+    context.json({
+      results: searchMemory(db, {
+        q: context.req.query("q") ?? "",
+        sourceMode: context.req.query("sourceMode"),
+        status: context.req.query("status")
+      })
+    })
+  );
+
+  app.post("/api/ask-memory", async (context) => {
+    const body = await readJsonBody<{ question?: string }>(context);
+    if (!body.question) {
+      return jsonError(context, 400, "Question is required");
+    }
+    return context.json(askMemory(db, body.question));
   });
 
   app.post("/api/extension/pair", async (context) => {

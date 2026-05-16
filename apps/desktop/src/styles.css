@@ -365,6 +365,44 @@ nav {
   padding-top: 4px;
 }
 
+.search-page {
+  display: grid;
+  gap: 16px;
+  margin-top: 28px;
+}
+
+.search-form {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.result-list {
+  display: grid;
+  gap: 12px;
+}
+
+.result-item,
+.answer-panel {
+  background: #ffffff;
+  border: 1px solid #dedbd2;
+  border-radius: 8px;
+  padding: 18px;
+}
+
+.result-item h2,
+.answer-panel h2 {
+  font-size: 18px;
+  margin: 10px 0 8px;
+}
+
+.result-item p,
+.answer-panel p {
+  color: #55534e;
+  line-height: 1.55;
+  margin: 0;
+}
+
 .settings-list {
   display: grid;
   gap: 16px;
@@ -403,6 +441,10 @@ nav {
   }
 
   .library-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .search-form {
     grid-template-columns: 1fr;
   }
 }

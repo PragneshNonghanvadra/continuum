@@ -237,3 +237,32 @@ test("reader page API lists generated session pages", async () => {
   expect(pages.readerPages[0].title).toBe("Reader session");
   expect(pages.readerPages[0].contentMarkdown).toContain("## Key Takeaways");
 });
+
+test("search and ask-memory API return source-backed retrieval results", async () => {
+  const app = createApiApp({ db: createMemoryDatabase() });
+  const sessionResponse = await app.request("/api/sessions", {
+    body: JSON.stringify({ mode: "article", title: "Search session" }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  const { session } = await sessionResponse.json();
+  await app.request(`/api/sessions/${session.id}/artifacts`, {
+    body: JSON.stringify({ artifactType: "article_text", content: "Frontend performance depends on LCP and bundle splitting." }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  await app.request(`/api/sessions/${session.id}/process`, { method: "POST" });
+
+  const searchPayload = await (await app.request("/api/search?q=LCP")).json();
+  expect(searchPayload.results.length).toBeGreaterThan(0);
+
+  const askPayload = await (
+    await app.request("/api/ask-memory", {
+      body: JSON.stringify({ question: "What did I learn about frontend performance?" }),
+      headers: { "content-type": "application/json" },
+      method: "POST"
+    })
+  ).json();
+  expect(askPayload.sources.length).toBeGreaterThan(0);
+  expect(askPayload.answer).toContain("Based on");
+});

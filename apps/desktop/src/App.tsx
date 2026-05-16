@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import {
   CONTINUUM_PRODUCT_NAME,
   captureModes,
@@ -6,15 +6,19 @@ import {
   type CaptureSession,
   type MemoryCard,
   type MemoryLink,
-  type ReaderPage
+  type ReaderPage,
+  type SearchResult,
+  type AskMemoryAnswer
 } from "@continuum/core";
 import {
+  askMemoryRequest,
   approveMemoryRequest,
   createSessionRequest,
   fetchAppSnapshot,
   fetchSessionArtifacts,
   markImportantRequest,
   rejectMemoryRequest,
+  searchMemoryRequest,
   updateMemoryRequest,
   updateSessionRequest,
   type AppSnapshot
@@ -109,6 +113,14 @@ function View({
 
   if (view === "library") {
     return <LibraryView links={links} memories={memories} readerPages={readerPages} sessions={sessions} />;
+  }
+
+  if (view === "search") {
+    return <SearchView />;
+  }
+
+  if (view === "ask-memory") {
+    return <AskMemoryView />;
   }
 
   if (view === "settings") {
@@ -464,6 +476,97 @@ function MarkdownView({ markdown }: { markdown: string }) {
         if (!line.trim()) return <br key={index} />;
         return <p key={index}>{line}</p>;
       })}
+    </div>
+  );
+}
+
+function SearchView() {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [error, setError] = useState<string | undefined>();
+
+  async function runSearch(event: FormEvent) {
+    event.preventDefault();
+    setError(undefined);
+    try {
+      setResults(await searchMemoryRequest(query));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Search failed");
+    }
+  }
+
+  return (
+    <div className="search-page">
+      <Panel title="Search Memory">
+        <form className="search-form" onSubmit={runSearch}>
+          <input onChange={(event) => setQuery(event.target.value)} placeholder="Search across memories, pages, sessions, artifacts" value={query} />
+          <button className="primary-button" type="submit">
+            Search
+          </button>
+        </form>
+      </Panel>
+      {error ? <div className="notice">{error}</div> : null}
+      <ResultList results={results} />
+    </div>
+  );
+}
+
+function AskMemoryView() {
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState<AskMemoryAnswer | undefined>();
+  const [error, setError] = useState<string | undefined>();
+
+  async function ask(event: FormEvent) {
+    event.preventDefault();
+    setError(undefined);
+    try {
+      setAnswer(await askMemoryRequest(question));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Ask Memory failed");
+    }
+  }
+
+  return (
+    <div className="search-page">
+      <Panel title="Ask Memory">
+        <form className="form-stack" onSubmit={ask}>
+          <textarea onChange={(event) => setQuestion(event.target.value)} placeholder="What did I learn about frontend performance?" rows={4} value={question} />
+          <button className="primary-button" type="submit">
+            Ask
+          </button>
+        </form>
+      </Panel>
+      {error ? <div className="notice">{error}</div> : null}
+      {answer ? (
+        <section className="answer-panel">
+          <h2>Answer</h2>
+          <p>{answer.answer}</p>
+          <h2>Sources</h2>
+          <ResultList results={answer.sources} />
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+function ResultList({ results }: { results: SearchResult[] }) {
+  if (results.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="result-list">
+      {results.map((result) => (
+        <article className="result-item" key={`${result.recordType}-${result.recordId}`}>
+          <div className="memory-card__meta">
+            <span>{result.recordType.replace("_", " ")}</span>
+            <span>{result.sourceType}</span>
+            <span>{result.status}</span>
+          </div>
+          <h2>{result.title}</h2>
+          <p>{result.summary || result.snippet}</p>
+        </article>
+      ))}
     </div>
   );
 }
