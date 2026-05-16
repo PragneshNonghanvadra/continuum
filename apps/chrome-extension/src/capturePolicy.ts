@@ -1,6 +1,7 @@
 export type ExtensionSessionSnapshot = {
   id: string;
   status: string;
+  title?: string;
 };
 
 export function canCaptureFromActiveSession(session: ExtensionSessionSnapshot | null | undefined) {

@@ -1,7 +1,9 @@
 import { canCaptureFromActiveSession, extensionHeaders, type ExtensionSessionSnapshot } from "./capturePolicy";
 import type { BrowserArtifactPayload } from "./evidence";
+import type { ContinuumExtensionStatus } from "./extensionStatus";
 
 const DEFAULT_API_BASE_URL = "http://127.0.0.1:5174/api";
+const STATUS_STORAGE_KEY = "continuumExtensionStatus";
 
 export type ActiveSessionResponse = {
   active: boolean;
@@ -39,15 +41,32 @@ export async function fetchActiveSession(): Promise<ActiveSessionResponse> {
     });
 
     if (!response.ok) {
+      await updateExtensionStatus({
+        active: false,
+        lastCheckedAt: new Date().toISOString(),
+        lastError: `Active session check failed with ${response.status}`
+      });
       return { active: false };
     }
 
     const payload = (await response.json()) as { session: ExtensionSessionSnapshot | null };
+    const active = canCaptureFromActiveSession(payload.session);
+    await updateExtensionStatus({
+      active,
+      activeSessionTitle: payload.session?.title,
+      lastCheckedAt: new Date().toISOString(),
+      lastError: active ? undefined : "No active capture session"
+    });
     return {
-      active: canCaptureFromActiveSession(payload.session),
+      active,
       session: payload.session ?? undefined
     };
-  } catch {
+  } catch (error) {
+    await updateExtensionStatus({
+      active: false,
+      lastCheckedAt: new Date().toISOString(),
+      lastError: error instanceof Error ? error.message : "Unable to reach Continuum"
+    });
     return { active: false };
   }
 }
@@ -66,11 +85,29 @@ export async function sendExtensionArtifacts(artifacts: BrowserArtifactPayload[]
   });
 
   if (!response.ok) {
+    await updateExtensionStatus({
+      lastError: response.status === 404 ? "No active capture session" : `Artifact ingest failed with ${response.status}`
+    });
     return { accepted: 0 };
   }
 
   const payload = (await response.json()) as { artifacts: unknown[] };
+  await updateExtensionStatus({
+    lastAcceptedArtifactCount: payload.artifacts.length,
+    lastCaptureAt: new Date().toISOString(),
+    lastError: undefined
+  });
   return { accepted: payload.artifacts.length };
+}
+
+async function updateExtensionStatus(patch: Partial<ContinuumExtensionStatus>) {
+  const stored = await chromeStorageGet<{ [STATUS_STORAGE_KEY]?: ContinuumExtensionStatus }>(STATUS_STORAGE_KEY);
+  await chromeStorageSet({
+    [STATUS_STORAGE_KEY]: compactObject({
+      ...(stored[STATUS_STORAGE_KEY] ?? { active: false }),
+      ...patch
+    })
+  });
 }
 
 function chromeStorageGet<T>(key: string): Promise<T> {
@@ -83,4 +120,8 @@ function chromeStorageSet(values: Record<string, unknown>) {
   return new Promise<void>((resolve) => {
     chrome.storage.local.set(values, () => resolve());
   });
+}
+
+function compactObject<T extends Record<string, unknown>>(value: T) {
+  return Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined)) as T;
 }
