@@ -3,10 +3,12 @@ import { Hono } from "hono";
 import {
   CONTINUUM_PRODUCT_NAME,
   createArtifact,
+  createExtensionPairing,
   createImportantMoment,
   createSession,
   deleteSession,
   getSession,
+  getExtensionPairingByToken,
   listArtifactsForSession,
   listImportantMomentsForSession,
   listSessions,
@@ -155,6 +157,22 @@ export function createApiApp({ db }: ApiAppOptions) {
   app.delete("/api/sessions/:id", (context) => {
     const session = deleteSession(db, context.req.param("id"));
     return session ? context.json({ session }) : jsonError(context, 404, "Session not found");
+  });
+
+  app.post("/api/extension/pair", async (context) => {
+    const body = await readJsonBody<{ browserName?: string }>(context);
+    const pairing = createExtensionPairing(db, body.browserName ?? "Chrome");
+    return context.json({ pairing }, 201);
+  });
+
+  app.get("/api/extension/active-session", (context) => {
+    const pairingToken = context.req.header("x-continuum-pairing-token");
+    if (!pairingToken || !getExtensionPairingByToken(db, pairingToken)) {
+      return jsonError(context, 401, "Extension is not paired");
+    }
+
+    const activeSession = listSessions(db).find((session) => session.status === "active") ?? null;
+    return context.json({ session: activeSession });
   });
 
   return app;

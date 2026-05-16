@@ -96,3 +96,12 @@ export type CreateImportantMomentInput = {
   sourceUrl?: string;
   timestampSeconds?: number;
 };
+
+export type ExtensionPairing = {
+  id: string;
+  pairingToken: string;
+  browserName: string;
+  status: "active" | "revoked";
+  createdAt: string;
+  updatedAt: string;
+};

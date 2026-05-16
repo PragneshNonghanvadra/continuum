@@ -79,3 +79,29 @@ test("important moment API stores explicit user markers", async () => {
   expect(markerResponse.status).toBe(201);
   expect((await markerResponse.json()).moment.note).toBe("Keep this decision");
 });
+
+test("extension API pairs and exposes only active capture sessions", async () => {
+  const app = createApiApp({ db: createMemoryDatabase() });
+  const pairingResponse = await app.request("/api/extension/pair", {
+    body: JSON.stringify({ browserName: "Chrome" }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  const { pairing } = await pairingResponse.json();
+
+  const emptyActiveResponse = await app.request("/api/extension/active-session", {
+    headers: { "x-continuum-pairing-token": pairing.pairingToken }
+  });
+  expect((await emptyActiveResponse.json()).session).toBeNull();
+
+  await app.request("/api/sessions", {
+    body: JSON.stringify({ mode: "article", title: "Extension capture" }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+
+  const activeResponse = await app.request("/api/extension/active-session", {
+    headers: { "x-continuum-pairing-token": pairing.pairingToken }
+  });
+  expect((await activeResponse.json()).session.title).toBe("Extension capture");
+});

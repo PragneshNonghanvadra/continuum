@@ -1,4 +1,4 @@
-import type { CaptureArtifact, CaptureSession, ImportantMoment } from "../domain";
+import type { CaptureArtifact, CaptureSession, ExtensionPairing, ImportantMoment } from "../domain";
 
 export type CaptureSessionRow = {
   id: string;
@@ -73,5 +73,25 @@ export function mapImportantMoment(row: ImportantMomentRow): ImportantMoment {
     sourceUrl: row.source_url ?? undefined,
     timestampSeconds: row.timestamp_seconds ?? undefined,
     createdAt: row.created_at
+  };
+}
+
+export type ExtensionPairingRow = {
+  id: string;
+  pairing_token: string;
+  browser_name: string;
+  status: ExtensionPairing["status"];
+  created_at: string;
+  updated_at: string;
+};
+
+export function mapExtensionPairing(row: ExtensionPairingRow): ExtensionPairing {
+  return {
+    id: row.id,
+    pairingToken: row.pairing_token,
+    browserName: row.browser_name,
+    status: row.status,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
   };
 }
