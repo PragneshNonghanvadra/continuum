@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Continuum Capture",
+  "description": "Capture browser evidence only during explicit Continuum sessions.",
+  "version": "0.1.0",
+  "permissions": ["activeTab", "scripting", "storage", "tabs"],
+  "host_permissions": ["http://127.0.0.1:5174/*"],
+  "background": {
+    "service_worker": "dist-extension/background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["dist-extension/content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "Continuum Capture",
+    "default_popup": "popup.html"
+  }
+}

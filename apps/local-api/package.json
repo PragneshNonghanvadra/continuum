@@ -1,0 +1,14 @@
+{
+  "name": "@continuum/local-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --hot src/index.ts",
+    "build": "tsc -p tsconfig.json --noEmit",
+    "start": "bun src/index.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@continuum/core": "workspace:*"
+  }
+}

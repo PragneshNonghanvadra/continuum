@@ -1,0 +1,12 @@
+{
+  "name": "@continuum/chrome-extension",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@continuum/core": "workspace:*"
+  }
+}

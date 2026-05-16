@@ -1,0 +1,32 @@
+{
+  "name": "continuum",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "bun --cwd apps/local-api run dev",
+    "dev:desktop": "bun --cwd apps/desktop run dev",
+    "build": "bun --cwd packages/core run build && bun --cwd apps/local-api run build && bun --cwd apps/chrome-extension run build && bun --cwd apps/desktop run build",
+    "test": "bun test",
+    "typecheck": "tsc -p packages/core/tsconfig.json --noEmit && tsc -p apps/local-api/tsconfig.json --noEmit && tsc -p apps/chrome-extension/tsconfig.json --noEmit && tsc -p apps/desktop/tsconfig.json --noEmit",
+    "lint": "bun run typecheck"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.0.0",
+    "drizzle-orm": "^0.44.0",
+    "hono": "^4.7.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "vite": "^6.3.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.5.0",
+    "@types/bun": "^1.2.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.8.0"
+  }
+}
