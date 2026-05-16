@@ -105,3 +105,50 @@ test("extension API pairs and exposes only active capture sessions", async () =>
   });
   expect((await activeResponse.json()).session.title).toBe("Extension capture");
 });
+
+test("extension artifact ingest writes to the active session only", async () => {
+  const app = createApiApp({ db: createMemoryDatabase() });
+  const pairingResponse = await app.request("/api/extension/pair", {
+    body: JSON.stringify({ browserName: "Chrome" }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  const { pairing } = await pairingResponse.json();
+  const sessionResponse = await app.request("/api/sessions", {
+    body: JSON.stringify({ mode: "video", title: "Video evidence" }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  const { session } = await sessionResponse.json();
+
+  const ingestResponse = await app.request("/api/extension/artifacts", {
+    body: JSON.stringify({
+      artifacts: [
+        {
+          artifactType: "browser_visible_text",
+          content: "Visible explanation",
+          metadata: { url: "https://example.com/watch" }
+        },
+        {
+          artifactType: "video_metadata",
+          metadata: { currentTime: 12, duration: 120, title: "Demo video" },
+          timestampStart: 12
+        }
+      ]
+    }),
+    headers: {
+      "content-type": "application/json",
+      "x-continuum-pairing-token": pairing.pairingToken
+    },
+    method: "POST"
+  });
+
+  expect(ingestResponse.status).toBe(201);
+  expect((await ingestResponse.json()).artifacts).toHaveLength(2);
+
+  const artifactsResponse = await app.request(`/api/sessions/${session.id}/artifacts`);
+  expect((await artifactsResponse.json()).artifacts.map((artifact: { artifactType: string }) => artifact.artifactType)).toEqual([
+    "browser_visible_text",
+    "video_metadata"
+  ]);
+});

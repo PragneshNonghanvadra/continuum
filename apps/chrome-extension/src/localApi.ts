@@ -1,4 +1,5 @@
 import { canCaptureFromActiveSession, extensionHeaders, type ExtensionSessionSnapshot } from "./capturePolicy";
+import type { BrowserArtifactPayload } from "./evidence";
 
 const DEFAULT_API_BASE_URL = "http://127.0.0.1:5174/api";
 
@@ -49,6 +50,27 @@ export async function fetchActiveSession(): Promise<ActiveSessionResponse> {
   } catch {
     return { active: false };
   }
+}
+
+export async function sendExtensionArtifacts(artifacts: BrowserArtifactPayload[]) {
+  if (artifacts.length === 0) {
+    return { accepted: 0 };
+  }
+
+  const apiBaseUrl = await getApiBaseUrl();
+  const pairingToken = await getPairingToken();
+  const response = await fetch(`${apiBaseUrl}/extension/artifacts`, {
+    body: JSON.stringify({ artifacts }),
+    headers: extensionHeaders(pairingToken),
+    method: "POST"
+  });
+
+  if (!response.ok) {
+    return { accepted: 0 };
+  }
+
+  const payload = (await response.json()) as { artifacts: unknown[] };
+  return { accepted: payload.artifacts.length };
 }
 
 function chromeStorageGet<T>(key: string): Promise<T> {

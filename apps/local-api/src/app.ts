@@ -15,7 +15,8 @@ import {
   updateSession,
   type ArtifactType,
   type CaptureMode,
-  type CaptureStatus
+  type CaptureStatus,
+  type CreateArtifactInput
 } from "@continuum/core";
 import { jsonError, readJsonBody } from "./http";
 
@@ -173,6 +174,31 @@ export function createApiApp({ db }: ApiAppOptions) {
 
     const activeSession = listSessions(db).find((session) => session.status === "active") ?? null;
     return context.json({ session: activeSession });
+  });
+
+  app.post("/api/extension/artifacts", async (context) => {
+    const pairingToken = context.req.header("x-continuum-pairing-token");
+    if (!pairingToken || !getExtensionPairingByToken(db, pairingToken)) {
+      return jsonError(context, 401, "Extension is not paired");
+    }
+
+    const activeSession = listSessions(db).find((session) => session.status === "active");
+    if (!activeSession) {
+      return jsonError(context, 404, "No active capture session");
+    }
+
+    const body = await readJsonBody<{
+      artifacts?: Array<Omit<CreateArtifactInput, "sessionId">>;
+    }>(context);
+
+    const artifacts = (body.artifacts ?? []).map((artifact) =>
+      createArtifact(db, {
+        ...artifact,
+        sessionId: activeSession.id
+      })
+    );
+
+    return context.json({ artifacts }, 201);
   });
 
   return app;
