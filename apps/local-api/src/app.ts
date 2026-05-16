@@ -35,7 +35,9 @@ import {
   updateMemoryStatus,
   updateSession,
   type ArtifactType,
+  type CaptureArtifact,
   type CaptureMode,
+  type CaptureSession,
   type CaptureSourceType,
   type CaptureStatus,
   type CreateCaptureSourceInput,
@@ -149,6 +151,17 @@ export function createApiApp({ db, runtime = {} }: ApiAppOptions) {
       return jsonError(context, 404, "Session not found");
     }
     return context.json({ artifacts: listArtifactsForSession(db, sessionId) });
+  });
+
+  app.get("/api/sessions/:id/capture-diagnostics", (context) => {
+    const sessionId = context.req.param("id");
+    const session = getSession(db, sessionId);
+    if (!session) {
+      return jsonError(context, 404, "Session not found");
+    }
+
+    const artifacts = listArtifactsForSession(db, sessionId);
+    return context.json(buildCaptureDiagnostics(session, artifacts));
   });
 
   app.post("/api/sessions/:id/sources", async (context) => {
@@ -388,4 +401,44 @@ export function createApiApp({ db, runtime = {} }: ApiAppOptions) {
   });
 
   return app;
+}
+
+function buildCaptureDiagnostics(session: CaptureSession, artifacts: CaptureArtifact[]) {
+  const artifactTypes = artifacts.reduce<Record<string, number>>((acc, artifact) => {
+    acc[artifact.artifactType] = (acc[artifact.artifactType] ?? 0) + 1;
+    return acc;
+  }, {});
+  const capturedTextCharacters = artifacts.reduce((total, artifact) => total + (artifact.content?.length ?? 0), 0);
+  const recentArtifacts = [...artifacts]
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+    .slice(0, 12)
+    .map((artifact) => ({
+      artifactType: artifact.artifactType,
+      contentPreview: artifact.content?.replace(/\s+/g, " ").trim().slice(0, 180),
+      createdAt: artifact.createdAt,
+      id: artifact.id,
+      metadata: artifact.metadata,
+      sourceUrl: typeof artifact.metadata?.url === "string" ? artifact.metadata.url : undefined
+    }));
+
+  return {
+    recentArtifacts,
+    summary: {
+      artifactCount: artifacts.length,
+      artifactTypes,
+      capturedTextCharacters,
+      lastArtifactAt: recentArtifacts[0]?.createdAt,
+      state: captureDiagnosticState(session, artifacts.length)
+    }
+  };
+}
+
+function captureDiagnosticState(session: CaptureSession, artifactCount: number) {
+  if (session.status === "active") {
+    return artifactCount > 0 ? "capturing" : "waiting_for_artifacts";
+  }
+  if (session.status === "processing") {
+    return artifactCount > 0 ? "ready_to_process" : "stopped_without_artifacts";
+  }
+  return session.status;
 }

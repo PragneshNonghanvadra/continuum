@@ -6,6 +6,7 @@ dist-extension
 .env.local
 data
 memory-vault
+.continuum-test-*
 apps/desktop/src-tauri/target
 *.sqlite
 *.sqlite-shm

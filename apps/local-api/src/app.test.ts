@@ -162,6 +162,48 @@ test("extension artifact ingest writes to the active session only", async () => 
   ]);
 });
 
+test("session capture diagnostics summarize whether evidence is arriving", async () => {
+  const app = createApiApp({ db: createMemoryDatabase() });
+  const sessionResponse = await app.request("/api/sessions", {
+    body: JSON.stringify({ mode: "article", title: "Diagnostics capture" }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  const { session } = await sessionResponse.json();
+
+  const emptyPayload = await (await app.request(`/api/sessions/${session.id}/capture-diagnostics`)).json();
+  expect(emptyPayload.summary.state).toBe("waiting_for_artifacts");
+  expect(emptyPayload.summary.artifactCount).toBe(0);
+
+  await app.request(`/api/sessions/${session.id}/artifacts`, {
+    body: JSON.stringify({
+      artifactType: "browser_visible_text",
+      content: "An article about explicit capture sessions and meaningful memory synthesis.",
+      metadata: { title: "Capture article", url: "https://example.com/article" }
+    }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  await app.request(`/api/sessions/${session.id}/artifacts`, {
+    body: JSON.stringify({
+      artifactType: "url_metadata",
+      metadata: { title: "Capture article", url: "https://example.com/article" }
+    }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+
+  const payload = await (await app.request(`/api/sessions/${session.id}/capture-diagnostics`)).json();
+  expect(payload.summary.state).toBe("capturing");
+  expect(payload.summary.artifactCount).toBe(2);
+  expect(payload.summary.artifactTypes.browser_visible_text).toBe(1);
+  expect(payload.summary.artifactTypes.url_metadata).toBe(1);
+  expect(payload.summary.capturedTextCharacters).toBeGreaterThan(20);
+  expect(payload.summary.lastArtifactAt).toBeString();
+  expect(payload.recentArtifacts.map((artifact: { artifactType: string }) => artifact.artifactType)).toContain("url_metadata");
+  expect(payload.recentArtifacts.map((artifact: { artifactType: string }) => artifact.artifactType)).toContain("browser_visible_text");
+});
+
 test("process session API converts captured artifacts into suggested memories", async () => {
   const app = createApiApp({ db: createMemoryDatabase() });
   const sessionResponse = await app.request("/api/sessions", {
