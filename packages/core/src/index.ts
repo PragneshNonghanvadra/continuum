@@ -6,7 +6,9 @@ export type ApiHealth = {
   version: string;
 };
 
+export type { CaptureMode, CaptureSession, CaptureStatus, CreateSessionInput, UpdateSessionInput } from "./domain";
 export { createMemoryDatabase, openContinuumDatabase } from "./db/connection";
 export { ensureContinuumDataDir, getContinuumDataDir, getContinuumDatabasePath } from "./db/dataDirectory";
 export { runMigrations } from "./db/migrations";
 export { ensureSeedData, seedDevelopmentData } from "./db/seed";
+export { createSession, deleteSession, getSession, listSessions, updateSession } from "./db/sessionRepository";

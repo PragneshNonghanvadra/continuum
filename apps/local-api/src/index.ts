@@ -1,17 +1,9 @@
-import { Hono } from "hono";
-import { CONTINUUM_PRODUCT_NAME, type ApiHealth } from "@continuum/core";
+import { CONTINUUM_PRODUCT_NAME, ensureSeedData, openContinuumDatabase } from "@continuum/core";
+import { createApiApp } from "./app";
 
-const app = new Hono();
-
-app.get("/api/health", (context) => {
-  const response: ApiHealth = {
-    ok: true,
-    product: CONTINUUM_PRODUCT_NAME,
-    version: "0.1.0"
-  };
-
-  return context.json(response);
-});
+const db = openContinuumDatabase();
+ensureSeedData(db);
+const app = createApiApp({ db });
 
 const port = Number(process.env.CONTINUUM_API_PORT ?? 5174);
 
