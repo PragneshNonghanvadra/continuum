@@ -324,3 +324,12 @@ test("markdown export API writes approved memories and reader pages", async () =
 
   expect(exportPayload.fileCount).toBeGreaterThanOrEqual(2);
 });
+
+test("privacy settings API exposes local retention defaults", async () => {
+  const app = createApiApp({ db: createMemoryDatabase() });
+  const payload = await (await app.request("/api/settings/privacy")).json();
+
+  expect(payload.retentionPolicy.retainRawAudio).toBe(false);
+  expect(payload.retentionPolicy.retainRawVideo).toBe(false);
+  expect(payload.retentionPolicy.captureRequiresExplicitSession).toBe(true);
+});

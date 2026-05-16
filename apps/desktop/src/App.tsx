@@ -658,6 +658,14 @@ function SettingsView() {
             <dt>Privacy</dt>
             <dd>Raw audio/video retention is off by default; derived artifacts are kept locally.</dd>
           </div>
+          <div>
+            <dt>Retention policies</dt>
+            <dd>Future controls: auto-delete raw media after processing, exclude apps/domains, private mode, and encryption at rest.</dd>
+          </div>
+          <div>
+            <dt>AI provider</dt>
+            <dd>Mock/local processing works without keys. Optional cloud transcription and LLM providers stay disabled until configured.</dd>
+          </div>
         </dl>
       </Panel>
       <Panel title="Markdown Export">

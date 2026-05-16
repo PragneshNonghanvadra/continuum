@@ -24,6 +24,7 @@ import {
   getReaderPage,
   updateRevisionItemStatus,
   exportMarkdownVault,
+  defaultRetentionPolicy,
   updateMemory,
   updateMemoryStatus,
   updateSession,
@@ -253,6 +254,12 @@ export function createApiApp({ db }: ApiAppOptions) {
     const body = await readJsonBody<{ exportDir?: string }>(context);
     return context.json(exportMarkdownVault(db, { exportDir: body.exportDir }));
   });
+
+  app.get("/api/settings/privacy", (context) =>
+    context.json({
+      retentionPolicy: defaultRetentionPolicy
+    })
+  );
 
   app.post("/api/extension/pair", async (context) => {
     const body = await readJsonBody<{ browserName?: string }>(context);

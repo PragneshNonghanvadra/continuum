@@ -49,6 +49,7 @@ export {
 export { MockMemoryProcessor } from "./processing/mockMemoryProcessor";
 export { processCapturedSession, type PersistedProcessResult } from "./processing/processSession";
 export { exportMarkdownVault, type MarkdownExporter, type MarkdownExportOptions, type MarkdownExportResult } from "./export/markdownExporter";
+export { defaultRetentionPolicy, type RetentionPolicy } from "./privacy/retention";
 export { askMemory, type AskMemoryAnswer } from "./search/askMemory";
 export { searchMemory, type SearchFilters, type SearchResult } from "./search/search";
 export type {
