@@ -16,8 +16,8 @@ import {
   approveMemoryRequest,
   createSessionRequest,
   exportMarkdownRequest,
+  fetchCaptureDiagnosticsRequest,
   fetchAppSnapshot,
-  fetchSessionArtifacts,
   markImportantRequest,
   processSessionRequest,
   rejectMemoryRequest,
@@ -28,6 +28,12 @@ import {
   type AppSnapshot,
   type CaptureCapability
 } from "./api";
+import {
+  captureStateLabel,
+  formatArtifactPreview,
+  summarizeArtifactTypes,
+  type CaptureDiagnostics
+} from "./captureDiagnostics";
 import { navigationItems, type NavigationItem } from "./navigation";
 
 const emptySnapshot: AppSnapshot = { captureCapabilities: [], links: [], memories: [], readerPages: [], revisionItems: [], sessions: [] };
@@ -228,7 +234,8 @@ function CaptureView({
 }) {
   const activeSession = sessions.find((session) => session.status === "active" || session.status === "paused");
   const processingSession = sessions.find((session) => session.status === "processing");
-  const [artifactCount, setArtifactCount] = useState(0);
+  const captureSession = activeSession ?? processingSession;
+  const [diagnostics, setDiagnostics] = useState<CaptureDiagnostics | undefined>();
   const [form, setForm] = useState({
     mode: "article" as CaptureMode,
     sourceTitle: "",
@@ -237,22 +244,40 @@ function CaptureView({
   });
   const [importantNote, setImportantNote] = useState("");
   const [actionError, setActionError] = useState<string | undefined>();
+  const [actionMessage, setActionMessage] = useState<string | undefined>();
+  const [isWorking, setIsWorking] = useState(false);
 
   useEffect(() => {
-    if (!activeSession) {
-      setArtifactCount(0);
+    if (!captureSession) {
+      setDiagnostics(undefined);
       return;
     }
-    fetchSessionArtifacts(activeSession.id).then((artifacts) => setArtifactCount(artifacts.length));
-  }, [activeSession?.id]);
+    let cancelled = false;
+    const loadDiagnostics = async () => {
+      const nextDiagnostics = await fetchCaptureDiagnosticsRequest(captureSession.id);
+      if (!cancelled) {
+        setDiagnostics(nextDiagnostics);
+      }
+    };
+    loadDiagnostics();
+    const interval = window.setInterval(loadDiagnostics, 2500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [captureSession?.id]);
 
   async function runAction(action: () => Promise<void>) {
     setActionError(undefined);
+    setActionMessage(undefined);
+    setIsWorking(true);
     try {
       await action();
       await refresh();
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Capture action failed");
+    } finally {
+      setIsWorking(false);
     }
   }
 
@@ -271,13 +296,15 @@ function CaptureView({
             </div>
             {activeSession.sourceUrl ? <a href={activeSession.sourceUrl}>{activeSession.sourceUrl}</a> : null}
             <div className="capture-stats">
-              <span>{artifactCount} artifacts captured</span>
+              <span>{diagnostics?.summary.artifactCount ?? 0} artifacts captured</span>
+              <span>{captureStateLabel(diagnostics?.summary.state ?? "waiting_for_artifacts")}</span>
               <span>Started {new Date(activeSession.startedAt).toLocaleString()}</span>
             </div>
           </div>
           <div className="button-row">
             <button
               className="primary-button"
+              disabled={isWorking}
               onClick={() => runAction(() => updateSessionRequest(activeSession.id, { status: paused ? "active" : "paused" }).then())}
               type="button"
             >
@@ -285,17 +312,23 @@ function CaptureView({
             </button>
             <button
               className="secondary-button"
+              disabled={isWorking}
               onClick={() =>
-                runAction(() =>
-                  updateSessionRequest(activeSession.id, { endedAt: new Date().toISOString(), status: "processing" }).then()
-                )
+                runAction(async () => {
+                  await updateSessionRequest(activeSession.id, { endedAt: new Date().toISOString(), status: "processing" });
+                  const result = await processSessionRequest(activeSession.id);
+                  setActionMessage(
+                    `Processed ${result.memoryCount} memories${result.exportResult ? ` and exported ${result.exportResult.fileCount} files` : ""}.`
+                  );
+                })
               }
               type="button"
             >
-              Stop Capture
+              {isWorking ? "Processing..." : "Stop & Process"}
             </button>
           </div>
         </Panel>
+        <CaptureEvidencePanel diagnostics={diagnostics} />
         <CaptureSourcesPanel capabilities={captureCapabilities} />
         <Panel title="Mark Moment">
           <div className="form-stack">
@@ -320,6 +353,7 @@ function CaptureView({
             </button>
           </div>
         </Panel>
+        {actionMessage ? <div className="notice notice--success">{actionMessage}</div> : null}
         {actionError ? <div className="notice">{actionError}</div> : null}
       </div>
     );
@@ -339,14 +373,18 @@ function CaptureView({
             <div className="button-row">
               <button
                 className="primary-button"
+                disabled={isWorking}
                 onClick={() =>
                   runAction(async () => {
-                    await processSessionRequest(processingSession.id);
+                    const result = await processSessionRequest(processingSession.id);
+                    setActionMessage(
+                      `Processed ${result.memoryCount} memories${result.exportResult ? ` and exported ${result.exportResult.fileCount} files` : ""}.`
+                    );
                   })
                 }
                 type="button"
               >
-                Process Session
+                {isWorking ? "Processing..." : "Process Session"}
               </button>
               <button
                 className="secondary-button"
@@ -358,7 +396,9 @@ function CaptureView({
             </div>
           </div>
         </Panel>
+        <CaptureEvidencePanel diagnostics={diagnostics} />
         <CaptureSourcesPanel capabilities={captureCapabilities} />
+        {actionMessage ? <div className="notice notice--success">{actionMessage}</div> : null}
         {actionError ? <div className="notice">{actionError}</div> : null}
       </div>
     );
@@ -428,6 +468,39 @@ function CaptureView({
       <CaptureSourcesPanel capabilities={captureCapabilities} />
       {actionError ? <div className="notice">{actionError}</div> : null}
     </div>
+  );
+}
+
+function CaptureEvidencePanel({ diagnostics }: { diagnostics?: CaptureDiagnostics }) {
+  const typeSummary = summarizeArtifactTypes(diagnostics);
+
+  return (
+    <Panel title="Evidence Feed">
+      <div className="evidence-summary">
+        <span>{captureStateLabel(diagnostics?.summary.state ?? "waiting_for_artifacts")}</span>
+        <strong>{diagnostics?.summary.artifactCount ?? 0} artifacts</strong>
+        <span>{diagnostics?.summary.capturedTextCharacters ?? 0} captured text chars</span>
+      </div>
+      {typeSummary.length > 0 ? (
+        <div className="artifact-type-list">
+          {typeSummary.map((item) => (
+            <span key={item}>{item}</span>
+          ))}
+        </div>
+      ) : (
+        <p className="source-line">Open or reload a normal web article tab while capture is active. Evidence should appear here within a few seconds.</p>
+      )}
+      {diagnostics?.recentArtifacts.length ? (
+        <ul className="evidence-list">
+          {diagnostics.recentArtifacts.map((artifact) => (
+            <li key={artifact.id}>
+              <strong>{formatArtifactPreview(artifact)}</strong>
+              <span>{new Date(artifact.createdAt).toLocaleTimeString()}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </Panel>
   );
 }
 

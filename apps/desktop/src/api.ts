@@ -12,6 +12,7 @@ import type {
   AskMemoryAnswer,
   RevisionItem
 } from "@continuum/core/browser";
+import type { CaptureDiagnostics } from "./captureDiagnostics";
 
 const API_BASE_URL = "http://127.0.0.1:5174/api";
 
@@ -143,6 +144,14 @@ export async function fetchSessionArtifacts(id: string) {
     return [] satisfies CaptureArtifact[];
   }
   return ((await response.json()) as { artifacts: CaptureArtifact[] }).artifacts;
+}
+
+export async function fetchCaptureDiagnosticsRequest(id: string): Promise<CaptureDiagnostics | undefined> {
+  const response = await fetch(`${API_BASE_URL}/sessions/${id}/capture-diagnostics`);
+  if (!response.ok) {
+    return undefined;
+  }
+  return (await response.json()) as CaptureDiagnostics;
 }
 
 export async function markImportantRequest(id: string, note: string) {
