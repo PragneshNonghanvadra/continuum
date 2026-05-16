@@ -28,3 +28,11 @@ export { createExtensionPairing, getExtensionPairingByToken } from "./db/pairing
 export { runMigrations } from "./db/migrations";
 export { ensureSeedData, seedDevelopmentData } from "./db/seed";
 export { createSession, deleteSession, getSession, listSessions, updateSession } from "./db/sessionRepository";
+export {
+  DisabledCloudTranscriptionProvider,
+  MockTranscriptionProvider,
+  storeTranscriptArtifact,
+  type TranscriptionInput,
+  type TranscriptionProvider,
+  type TranscriptionResult
+} from "./processing/transcription";
