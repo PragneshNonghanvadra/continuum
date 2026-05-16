@@ -412,6 +412,12 @@ nav {
   margin-top: 28px;
 }
 
+.settings-page {
+  display: grid;
+  gap: 16px;
+  margin-top: 28px;
+}
+
 .settings-list {
   display: grid;
   gap: 16px;

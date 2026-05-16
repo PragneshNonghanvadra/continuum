@@ -163,3 +163,15 @@ export async function updateRevisionItemRequest(id: string, status: RevisionItem
     throw new Error("Unable to update revision item");
   }
 }
+
+export async function exportMarkdownRequest(exportDir?: string) {
+  const response = await fetch(`${API_BASE_URL}/export/markdown`, {
+    body: JSON.stringify({ exportDir: exportDir?.trim() || undefined }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  if (!response.ok) {
+    throw new Error("Unable to export Markdown vault");
+  }
+  return (await response.json()) as { exportDir: string; fileCount: number; files: string[] };
+}

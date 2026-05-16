@@ -295,3 +295,32 @@ test("revision API lists generated questions and updates review status", async (
 
   expect(updatePayload.revisionItem.status).toBe("mastered");
 });
+
+test("markdown export API writes approved memories and reader pages", async () => {
+  const exportDir = `/tmp/continuum-api-export-${crypto.randomUUID()}`;
+  const app = createApiApp({ db: createMemoryDatabase() });
+  const sessionResponse = await app.request("/api/sessions", {
+    body: JSON.stringify({ mode: "article", title: "Export session" }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  const { session } = await sessionResponse.json();
+  await app.request(`/api/sessions/${session.id}/artifacts`, {
+    body: JSON.stringify({ artifactType: "article_text", content: "Markdown vault export mirrors approved memory." }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  await app.request(`/api/sessions/${session.id}/process`, { method: "POST" });
+  const memoriesPayload = await (await app.request("/api/memories?status=suggested")).json();
+  await app.request(`/api/memories/${memoriesPayload.memories[0].id}/approve`, { method: "POST" });
+
+  const exportPayload = await (
+    await app.request("/api/export/markdown", {
+      body: JSON.stringify({ exportDir }),
+      headers: { "content-type": "application/json" },
+      method: "POST"
+    })
+  ).json();
+
+  expect(exportPayload.fileCount).toBeGreaterThanOrEqual(2);
+});

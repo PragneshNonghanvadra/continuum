@@ -23,6 +23,7 @@ import {
   searchMemory,
   getReaderPage,
   updateRevisionItemStatus,
+  exportMarkdownVault,
   updateMemory,
   updateMemoryStatus,
   updateSession,
@@ -246,6 +247,11 @@ export function createApiApp({ db }: ApiAppOptions) {
     }
     const revisionItem = updateRevisionItemStatus(db, context.req.param("id"), body.status);
     return revisionItem ? context.json({ revisionItem }) : jsonError(context, 404, "Revision item not found");
+  });
+
+  app.post("/api/export/markdown", async (context) => {
+    const body = await readJsonBody<{ exportDir?: string }>(context);
+    return context.json(exportMarkdownVault(db, { exportDir: body.exportDir }));
   });
 
   app.post("/api/extension/pair", async (context) => {

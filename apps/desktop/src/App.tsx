@@ -15,6 +15,7 @@ import {
   askMemoryRequest,
   approveMemoryRequest,
   createSessionRequest,
+  exportMarkdownRequest,
   fetchAppSnapshot,
   fetchSessionArtifacts,
   markImportantRequest,
@@ -133,24 +134,7 @@ function View({
   }
 
   if (view === "settings") {
-    return (
-      <Panel title="Settings">
-        <dl className="settings-list">
-          <div>
-            <dt>Data directory</dt>
-            <dd>Local SQLite and artifact storage, configurable through the API environment.</dd>
-          </div>
-          <div>
-            <dt>Extension pairing</dt>
-            <dd>Chrome extension pairing is local-only and session-scoped.</dd>
-          </div>
-          <div>
-            <dt>Privacy</dt>
-            <dd>Raw audio/video retention is off by default; derived artifacts are kept locally.</dd>
-          </div>
-        </dl>
-      </Panel>
-    );
+    return <SettingsView />;
   }
 
   return (
@@ -634,6 +618,65 @@ function RevisionView({ refresh, revisionItems }: { refresh: () => Promise<void>
           </div>
         </article>
       ))}
+    </div>
+  );
+}
+
+function SettingsView() {
+  const [exportDir, setExportDir] = useState("");
+  const [exportResult, setExportResult] = useState<string | undefined>();
+  const [error, setError] = useState<string | undefined>();
+
+  async function exportVault(event: FormEvent) {
+    event.preventDefault();
+    setError(undefined);
+    try {
+      const result = await exportMarkdownRequest(exportDir);
+      setExportResult(`Exported ${result.fileCount} files to ${result.exportDir}`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Export failed");
+    }
+  }
+
+  return (
+    <div className="settings-page">
+      <Panel title="Settings">
+        <dl className="settings-list">
+          <div>
+            <dt>Data directory</dt>
+            <dd>Local SQLite and artifact storage, configurable through the API environment.</dd>
+          </div>
+          <div>
+            <dt>Markdown export directory</dt>
+            <dd>Export is explicit and writes approved memories plus reader pages into an Obsidian-style vault.</dd>
+          </div>
+          <div>
+            <dt>Extension pairing</dt>
+            <dd>Chrome extension pairing is local-only and session-scoped.</dd>
+          </div>
+          <div>
+            <dt>Privacy</dt>
+            <dd>Raw audio/video retention is off by default; derived artifacts are kept locally.</dd>
+          </div>
+        </dl>
+      </Panel>
+      <Panel title="Markdown Export">
+        <form className="form-stack" onSubmit={exportVault}>
+          <label>
+            Export directory
+            <input
+              onChange={(event) => setExportDir(event.target.value)}
+              placeholder="Leave blank for the default local memory-vault"
+              value={exportDir}
+            />
+          </label>
+          <button className="primary-button" type="submit">
+            Export Markdown
+          </button>
+        </form>
+        {exportResult ? <p className="source-line">{exportResult}</p> : null}
+        {error ? <div className="notice">{error}</div> : null}
+      </Panel>
     </div>
   );
 }
