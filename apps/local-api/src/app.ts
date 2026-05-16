@@ -11,7 +11,9 @@ import {
   getExtensionPairingByToken,
   listArtifactsForSession,
   listImportantMomentsForSession,
+  listMemories,
   listSessions,
+  processCapturedSession,
   updateSession,
   type ArtifactType,
   type CaptureMode,
@@ -158,6 +160,20 @@ export function createApiApp({ db }: ApiAppOptions) {
   app.delete("/api/sessions/:id", (context) => {
     const session = deleteSession(db, context.req.param("id"));
     return session ? context.json({ session }) : jsonError(context, 404, "Session not found");
+  });
+
+  app.post("/api/sessions/:id/process", async (context) => {
+    try {
+      const result = await processCapturedSession(db, context.req.param("id"));
+      return context.json(result);
+    } catch (error) {
+      return jsonError(context, 404, error instanceof Error ? error.message : "Unable to process session");
+    }
+  });
+
+  app.get("/api/memories", (context) => {
+    const status = context.req.query("status");
+    return context.json({ memories: listMemories(db, status ? { status: status as never } : {}) });
   });
 
   app.post("/api/extension/pair", async (context) => {

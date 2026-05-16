@@ -1,4 +1,13 @@
-import type { CaptureArtifact, CaptureSession, ExtensionPairing, ImportantMoment } from "../domain";
+import type {
+  CaptureArtifact,
+  CaptureSession,
+  ExtensionPairing,
+  ImportantMoment,
+  MemoryCard,
+  MemoryLink,
+  ReaderPage,
+  RevisionItem
+} from "../domain";
 
 export type CaptureSessionRow = {
   id: string;
@@ -93,5 +102,119 @@ export function mapExtensionPairing(row: ExtensionPairingRow): ExtensionPairing 
     status: row.status,
     createdAt: row.created_at,
     updatedAt: row.updated_at
+  };
+}
+
+export type MemoryCardRow = {
+  id: string;
+  session_id: string | null;
+  title: string;
+  summary: string;
+  full_text: string;
+  category: MemoryCard["category"];
+  memory_type: MemoryCard["memoryType"];
+  importance: 1 | 2 | 3 | 4 | 5;
+  confidence: number;
+  status: MemoryCard["status"];
+  evidence_json: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export function mapMemoryCard(row: MemoryCardRow): MemoryCard {
+  return {
+    id: row.id,
+    sessionId: row.session_id ?? undefined,
+    title: row.title,
+    summary: row.summary,
+    fullText: row.full_text,
+    category: row.category,
+    memoryType: row.memory_type,
+    importance: row.importance,
+    confidence: row.confidence,
+    status: row.status,
+    evidence: row.evidence_json ? (JSON.parse(row.evidence_json) as Record<string, unknown>) : undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+export type ReaderPageRow = {
+  id: string;
+  page_type: ReaderPage["pageType"];
+  title: string;
+  slug: string;
+  summary: string;
+  content_markdown: string;
+  source_session_id: string | null;
+  topic_key: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export function mapReaderPage(row: ReaderPageRow): ReaderPage {
+  return {
+    id: row.id,
+    pageType: row.page_type,
+    title: row.title,
+    slug: row.slug,
+    summary: row.summary,
+    contentMarkdown: row.content_markdown,
+    sourceSessionId: row.source_session_id ?? undefined,
+    topicKey: row.topic_key ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+export type RevisionItemRow = {
+  id: string;
+  memory_id: string | null;
+  reader_page_id: string | null;
+  question: string;
+  answer: string | null;
+  difficulty: RevisionItem["difficulty"];
+  status: RevisionItem["status"];
+  due_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export function mapRevisionItem(row: RevisionItemRow): RevisionItem {
+  return {
+    id: row.id,
+    memoryId: row.memory_id ?? undefined,
+    readerPageId: row.reader_page_id ?? undefined,
+    question: row.question,
+    answer: row.answer ?? undefined,
+    difficulty: row.difficulty,
+    status: row.status,
+    dueAt: row.due_at ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+export type MemoryLinkRow = {
+  id: string;
+  source_memory_id: string;
+  target_memory_id: string;
+  relation_type: MemoryLink["relationType"];
+  score: number;
+  reason: string;
+  status: MemoryLink["status"];
+  created_at: string;
+};
+
+export function mapMemoryLink(row: MemoryLinkRow): MemoryLink {
+  return {
+    id: row.id,
+    sourceMemoryId: row.source_memory_id,
+    targetMemoryId: row.target_memory_id,
+    relationType: row.relation_type,
+    score: row.score,
+    reason: row.reason,
+    status: row.status,
+    createdAt: row.created_at
   };
 }

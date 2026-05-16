@@ -152,3 +152,28 @@ test("extension artifact ingest writes to the active session only", async () => 
     "video_metadata"
   ]);
 });
+
+test("process session API converts captured artifacts into suggested memories", async () => {
+  const app = createApiApp({ db: createMemoryDatabase() });
+  const sessionResponse = await app.request("/api/sessions", {
+    body: JSON.stringify({ mode: "article", title: "Local-first memory" }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  const { session } = await sessionResponse.json();
+  await app.request(`/api/sessions/${session.id}/artifacts`, {
+    body: JSON.stringify({
+      artifactType: "article_text",
+      content: "SQLite should be the canonical memory database. Markdown export should be a readable mirror."
+    }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+
+  const processResponse = await app.request(`/api/sessions/${session.id}/process`, { method: "POST" });
+  expect(processResponse.status).toBe(200);
+  expect((await processResponse.json()).memoryCount).toBeGreaterThan(0);
+
+  const memoriesResponse = await app.request("/api/memories?status=suggested");
+  expect((await memoriesResponse.json()).memories[0].status).toBe("suggested");
+});

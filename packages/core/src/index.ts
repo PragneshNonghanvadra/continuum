@@ -31,6 +31,10 @@ export { createMemoryDatabase, openContinuumDatabase } from "./db/connection";
 export { ensureContinuumDataDir, getContinuumDataDir, getContinuumDatabasePath } from "./db/dataDirectory";
 export { createImportantMoment, listImportantMomentsForSession } from "./db/importantMomentRepository";
 export { createExtensionPairing, getExtensionPairingByToken } from "./db/pairingRepository";
+export { createMemoryLink, listMemoryLinks } from "./db/memoryLinkRepository";
+export { createMemoryCard, getMemory, listMemories, updateMemoryStatus } from "./db/memoryRepository";
+export { createReaderPage, getReaderPage, listReaderPages } from "./db/readerPageRepository";
+export { createRevisionItem, listRevisionItems } from "./db/revisionRepository";
 export { runMigrations } from "./db/migrations";
 export { ensureSeedData, seedDevelopmentData } from "./db/seed";
 export { createSession, deleteSession, getSession, listSessions, updateSession } from "./db/sessionRepository";
@@ -43,6 +47,7 @@ export {
   type TranscriptionResult
 } from "./processing/transcription";
 export { MockMemoryProcessor } from "./processing/mockMemoryProcessor";
+export { processCapturedSession, type PersistedProcessResult } from "./processing/processSession";
 export type {
   LinkDraft,
   MemoryDraft,
