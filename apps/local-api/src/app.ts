@@ -3,10 +3,12 @@ import { Hono } from "hono";
 import {
   CONTINUUM_PRODUCT_NAME,
   createArtifact,
+  createImportantMoment,
   createSession,
   deleteSession,
   getSession,
   listArtifactsForSession,
+  listImportantMomentsForSession,
   listSessions,
   updateSession,
   type ArtifactType,
@@ -105,6 +107,36 @@ export function createApiApp({ db }: ApiAppOptions) {
       return jsonError(context, 404, "Session not found");
     }
     return context.json({ artifacts: listArtifactsForSession(db, sessionId) });
+  });
+
+  app.post("/api/sessions/:id/important-moments", async (context) => {
+    const sessionId = context.req.param("id");
+    if (!getSession(db, sessionId)) {
+      return jsonError(context, 404, "Session not found");
+    }
+
+    const body = await readJsonBody<{
+      note?: string;
+      sourceUrl?: string;
+      timestampSeconds?: number;
+    }>(context);
+
+    const moment = createImportantMoment(db, {
+      note: body.note,
+      sessionId,
+      sourceUrl: body.sourceUrl,
+      timestampSeconds: body.timestampSeconds
+    });
+
+    return context.json({ moment }, 201);
+  });
+
+  app.get("/api/sessions/:id/important-moments", (context) => {
+    const sessionId = context.req.param("id");
+    if (!getSession(db, sessionId)) {
+      return jsonError(context, 404, "Session not found");
+    }
+    return context.json({ moments: listImportantMomentsForSession(db, sessionId) });
   });
 
   app.patch("/api/sessions/:id", async (context) => {

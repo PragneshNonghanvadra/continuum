@@ -13,13 +13,16 @@ export type {
   CaptureSession,
   CaptureStatus,
   CreateArtifactInput,
+  CreateImportantMomentInput,
   CreateSessionInput,
+  ImportantMoment,
   UpdateSessionInput
 } from "./domain";
 export { artifactTypes, captureModes, captureStatuses } from "./domain";
 export { createArtifact, listArtifactsForSession } from "./db/artifactRepository";
 export { createMemoryDatabase, openContinuumDatabase } from "./db/connection";
 export { ensureContinuumDataDir, getContinuumDataDir, getContinuumDatabasePath } from "./db/dataDirectory";
+export { createImportantMoment, listImportantMomentsForSession } from "./db/importantMomentRepository";
 export { runMigrations } from "./db/migrations";
 export { ensureSeedData, seedDevelopmentData } from "./db/seed";
 export { createSession, deleteSession, getSession, listSessions, updateSession } from "./db/sessionRepository";

@@ -80,3 +80,19 @@ export type CreateArtifactInput = {
   timestampEnd?: number;
   metadata?: Record<string, unknown>;
 };
+
+export type ImportantMoment = {
+  id: string;
+  sessionId: string;
+  note?: string;
+  sourceUrl?: string;
+  timestampSeconds?: number;
+  createdAt: string;
+};
+
+export type CreateImportantMomentInput = {
+  sessionId: string;
+  note?: string;
+  sourceUrl?: string;
+  timestampSeconds?: number;
+};

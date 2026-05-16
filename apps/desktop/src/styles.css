@@ -20,6 +20,19 @@ textarea {
   font: inherit;
 }
 
+input,
+select,
+textarea {
+  border: 1px solid #cfcbbf;
+  border-radius: 8px;
+  padding: 10px 12px;
+  width: 100%;
+}
+
+textarea {
+  resize: vertical;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
@@ -113,6 +126,13 @@ nav {
   margin-top: 28px;
 }
 
+.capture-layout {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 420px);
+  margin-top: 28px;
+}
+
 .panel {
   background: #ffffff;
   border: 1px solid #dedbd2;
@@ -130,6 +150,76 @@ nav {
   color: #55534e;
   line-height: 1.55;
   margin: 0;
+}
+
+.form-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.form-stack label {
+  color: #3f3d38;
+  display: grid;
+  font-weight: 700;
+  gap: 6px;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.primary-button,
+.secondary-button {
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 10px 14px;
+}
+
+.primary-button {
+  background: #202124;
+  color: #ffffff;
+}
+
+.secondary-button {
+  background: #efede6;
+  color: #202124;
+}
+
+.secondary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.active-capture {
+  display: grid;
+  gap: 12px;
+}
+
+.active-capture div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.active-capture span,
+.active-capture a {
+  color: #67645d;
+}
+
+.capture-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.capture-stats span {
+  background: #f5f3ed;
+  border-radius: 999px;
+  padding: 6px 10px;
 }
 
 .session-list {
@@ -182,6 +272,10 @@ nav {
   }
 
   .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .capture-layout {
     grid-template-columns: 1fr;
   }
 }

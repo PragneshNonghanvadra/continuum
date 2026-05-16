@@ -60,3 +60,22 @@ test("artifact API ingests and lists session artifacts", async () => {
   expect(listed.artifacts).toHaveLength(1);
   expect(listed.artifacts[0].metadata).toEqual({ source: "browser" });
 });
+
+test("important moment API stores explicit user markers", async () => {
+  const app = createApiApp({ db: createMemoryDatabase() });
+  const sessionResponse = await app.request("/api/sessions", {
+    body: JSON.stringify({ mode: "research", title: "Research session" }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  const { session } = await sessionResponse.json();
+
+  const markerResponse = await app.request(`/api/sessions/${session.id}/important-moments`, {
+    body: JSON.stringify({ note: "Keep this decision", sourceUrl: "https://example.com", timestampSeconds: 10 }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+
+  expect(markerResponse.status).toBe(201);
+  expect((await markerResponse.json()).moment.note).toBe("Keep this decision");
+});
