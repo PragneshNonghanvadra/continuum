@@ -4,6 +4,7 @@ import {
   CONTINUUM_PRODUCT_NAME,
   askMemory,
   createArtifact,
+  createAiProviderFromEnv,
   createExtensionPairing,
   createImportantMoment,
   createSession,
@@ -258,6 +259,12 @@ export function createApiApp({ db }: ApiAppOptions) {
   app.get("/api/settings/privacy", (context) =>
     context.json({
       retentionPolicy: defaultRetentionPolicy
+    })
+  );
+
+  app.get("/api/settings/ai", (context) =>
+    context.json({
+      provider: createAiProviderFromEnv().describe()
     })
   );
 

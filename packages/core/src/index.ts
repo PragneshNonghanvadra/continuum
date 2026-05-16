@@ -41,6 +41,17 @@ export { runMigrations } from "./db/migrations";
 export { ensureSeedData, seedDevelopmentData } from "./db/seed";
 export { createSession, deleteSession, getSession, listSessions, updateSession } from "./db/sessionRepository";
 export {
+  aiProviderKinds,
+  createAiProviderFromEnv,
+  HttpAiProvider,
+  MockAiProvider,
+  type AiGenerationProvider,
+  type AiGenerationRequest,
+  type AiProviderDescription,
+  type AiProviderEnvironment,
+  type AiProviderKind
+} from "./ai/provider";
+export {
   DisabledCloudTranscriptionProvider,
   MockTranscriptionProvider,
   storeTranscriptArtifact,
@@ -49,6 +60,7 @@ export {
   type TranscriptionResult
 } from "./processing/transcription";
 export { MockMemoryProcessor } from "./processing/mockMemoryProcessor";
+export { AiMemoryProcessor, createDefaultMemoryProcessor } from "./processing/aiMemoryProcessor";
 export { processCapturedSession, type PersistedProcessResult } from "./processing/processSession";
 export { exportMarkdownVault, type MarkdownExporter, type MarkdownExportOptions, type MarkdownExportResult } from "./export/markdownExporter";
 export { defaultRetentionPolicy, type RetentionPolicy } from "./privacy/retention";

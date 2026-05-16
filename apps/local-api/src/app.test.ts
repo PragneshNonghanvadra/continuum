@@ -333,3 +333,11 @@ test("privacy settings API exposes local retention defaults", async () => {
   expect(payload.retentionPolicy.retainRawVideo).toBe(false);
   expect(payload.retentionPolicy.captureRequiresExplicitSession).toBe(true);
 });
+
+test("AI settings API exposes provider mode without secrets", async () => {
+  const app = createApiApp({ db: createMemoryDatabase() });
+  const payload = await (await app.request("/api/settings/ai")).json();
+
+  expect(payload.provider.kind).toBe("mock");
+  expect(payload.provider).not.toHaveProperty("apiKey");
+});

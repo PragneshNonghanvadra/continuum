@@ -14,7 +14,7 @@ import {
   upsertTag,
   upsertTopic
 } from "../db/topicRepository";
-import { MockMemoryProcessor } from "./mockMemoryProcessor";
+import { createDefaultMemoryProcessor } from "./aiMemoryProcessor";
 import type { MemoryProcessor } from "./types";
 
 export type PersistedProcessResult = {
@@ -27,7 +27,7 @@ export type PersistedProcessResult = {
 export async function processCapturedSession(
   db: Database,
   sessionId: string,
-  processor: MemoryProcessor = new MockMemoryProcessor()
+  processor: MemoryProcessor = createDefaultMemoryProcessor()
 ): Promise<PersistedProcessResult> {
   const session = getSession(db, sessionId);
   if (!session) {
