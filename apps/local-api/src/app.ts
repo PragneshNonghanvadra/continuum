@@ -17,10 +17,12 @@ import {
   listMemoryLinksForMemory,
   listMemories,
   listReaderPages,
+  listRevisionItems,
   listSessions,
   processCapturedSession,
   searchMemory,
   getReaderPage,
+  updateRevisionItemStatus,
   updateMemory,
   updateMemoryStatus,
   updateSession,
@@ -233,6 +235,17 @@ export function createApiApp({ db }: ApiAppOptions) {
       return jsonError(context, 400, "Question is required");
     }
     return context.json(askMemory(db, body.question));
+  });
+
+  app.get("/api/revision-items", (context) => context.json({ revisionItems: listRevisionItems(db) }));
+
+  app.patch("/api/revision-items/:id", async (context) => {
+    const body = await readJsonBody<{ status?: "new" | "reviewed" | "mastered" | "skipped" }>(context);
+    if (!body.status) {
+      return jsonError(context, 400, "Revision status is required");
+    }
+    const revisionItem = updateRevisionItemStatus(db, context.req.param("id"), body.status);
+    return revisionItem ? context.json({ revisionItem }) : jsonError(context, 404, "Revision item not found");
   });
 
   app.post("/api/extension/pair", async (context) => {

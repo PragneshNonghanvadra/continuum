@@ -34,7 +34,7 @@ export { createExtensionPairing, getExtensionPairingByToken } from "./db/pairing
 export { createMemoryLink, listMemoryLinks, listMemoryLinksForMemory } from "./db/memoryLinkRepository";
 export { createMemoryCard, getMemory, listMemories, updateMemory, updateMemoryStatus, type UpdateMemoryInput } from "./db/memoryRepository";
 export { createReaderPage, getReaderPage, listReaderPages } from "./db/readerPageRepository";
-export { createRevisionItem, listRevisionItems } from "./db/revisionRepository";
+export { createRevisionItem, getRevisionItem, listRevisionItems, updateRevisionItemStatus } from "./db/revisionRepository";
 export { runMigrations } from "./db/migrations";
 export { ensureSeedData, seedDevelopmentData } from "./db/seed";
 export { createSession, deleteSession, getSession, listSessions, updateSession } from "./db/sessionRepository";

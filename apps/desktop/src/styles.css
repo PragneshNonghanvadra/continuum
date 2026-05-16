@@ -383,7 +383,8 @@ nav {
 }
 
 .result-item,
-.answer-panel {
+.answer-panel,
+.revision-item {
   background: #ffffff;
   border: 1px solid #dedbd2;
   border-radius: 8px;
@@ -391,16 +392,24 @@ nav {
 }
 
 .result-item h2,
-.answer-panel h2 {
+.answer-panel h2,
+.revision-item h2 {
   font-size: 18px;
   margin: 10px 0 8px;
 }
 
 .result-item p,
-.answer-panel p {
+.answer-panel p,
+.revision-item p {
   color: #55534e;
   line-height: 1.55;
   margin: 0;
+}
+
+.revision-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 28px;
 }
 
 .settings-list {

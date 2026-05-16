@@ -8,7 +8,8 @@ import {
   type MemoryLink,
   type ReaderPage,
   type SearchResult,
-  type AskMemoryAnswer
+  type AskMemoryAnswer,
+  type RevisionItem
 } from "@continuum/core";
 import {
   askMemoryRequest,
@@ -19,13 +20,14 @@ import {
   markImportantRequest,
   rejectMemoryRequest,
   searchMemoryRequest,
+  updateRevisionItemRequest,
   updateMemoryRequest,
   updateSessionRequest,
   type AppSnapshot
 } from "./api";
 import { navigationItems, type NavigationItem } from "./navigation";
 
-const emptySnapshot: AppSnapshot = { links: [], memories: [], readerPages: [], sessions: [] };
+const emptySnapshot: AppSnapshot = { links: [], memories: [], readerPages: [], revisionItems: [], sessions: [] };
 
 export function App() {
   const [activeView, setActiveView] = useState<NavigationItem["id"]>("home");
@@ -75,6 +77,7 @@ export function App() {
           links={snapshot.links}
           memories={snapshot.memories}
           readerPages={snapshot.readerPages}
+          revisionItems={snapshot.revisionItems}
           refresh={refreshSnapshot}
           view={activeView}
           sessions={snapshot.sessions}
@@ -89,12 +92,14 @@ function View({
   links,
   memories,
   readerPages,
+  revisionItems,
   sessions,
   view
 }: {
   links: MemoryLink[];
   memories: MemoryCard[];
   readerPages: ReaderPage[];
+  revisionItems: RevisionItem[];
   refresh: () => Promise<void>;
   sessions: CaptureSession[];
   view: NavigationItem["id"];
@@ -121,6 +126,10 @@ function View({
 
   if (view === "ask-memory") {
     return <AskMemoryView />;
+  }
+
+  if (view === "revision") {
+    return <RevisionView refresh={refresh} revisionItems={revisionItems} />;
   }
 
   if (view === "settings") {
@@ -565,6 +574,64 @@ function ResultList({ results }: { results: SearchResult[] }) {
           </div>
           <h2>{result.title}</h2>
           <p>{result.summary || result.snippet}</p>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function RevisionView({ refresh, revisionItems }: { refresh: () => Promise<void>; revisionItems: RevisionItem[] }) {
+  if (revisionItems.length === 0) {
+    return (
+      <Panel title="Revision">
+        <p>No revision questions yet. Learning, article, video, and interview sessions generate questions during processing.</p>
+      </Panel>
+    );
+  }
+
+  return (
+    <div className="revision-list">
+      {revisionItems.map((item) => (
+        <article className="revision-item" key={item.id}>
+          <div className="memory-card__meta">
+            <span>{item.difficulty}</span>
+            <span>{item.status}</span>
+            {item.dueAt ? <span>due {new Date(item.dueAt).toLocaleDateString()}</span> : null}
+          </div>
+          <h2>{item.question}</h2>
+          {item.answer ? <p>{item.answer}</p> : null}
+          <div className="button-row">
+            <button
+              className="secondary-button"
+              onClick={async () => {
+                await updateRevisionItemRequest(item.id, "reviewed");
+                await refresh();
+              }}
+              type="button"
+            >
+              Reviewed
+            </button>
+            <button
+              className="primary-button"
+              onClick={async () => {
+                await updateRevisionItemRequest(item.id, "mastered");
+                await refresh();
+              }}
+              type="button"
+            >
+              Mastered
+            </button>
+            <button
+              className="secondary-button"
+              onClick={async () => {
+                await updateRevisionItemRequest(item.id, "skipped");
+                await refresh();
+              }}
+              type="button"
+            >
+              Skip
+            </button>
+          </div>
         </article>
       ))}
     </div>

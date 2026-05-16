@@ -34,3 +34,13 @@ export function createRevisionItem(
 export function listRevisionItems(db: Database): RevisionItem[] {
   return db.query<RevisionItemRow, []>("select * from revision_items order by created_at desc").all().map(mapRevisionItem);
 }
+
+export function getRevisionItem(db: Database, id: string): RevisionItem | undefined {
+  const row = db.query<RevisionItemRow, [string]>("select * from revision_items where id = ?").get(id);
+  return row ? mapRevisionItem(row) : undefined;
+}
+
+export function updateRevisionItemStatus(db: Database, id: string, status: RevisionItem["status"]): RevisionItem | undefined {
+  db.prepare("update revision_items set status = ?, updated_at = ? where id = ?").run(status, new Date().toISOString(), id);
+  return getRevisionItem(db, id);
+}

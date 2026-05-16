@@ -8,7 +8,8 @@ import type {
   MemoryLink,
   ReaderPage,
   SearchResult,
-  AskMemoryAnswer
+  AskMemoryAnswer,
+  RevisionItem
 } from "@continuum/core";
 
 const API_BASE_URL = "http://127.0.0.1:5174/api";
@@ -18,22 +19,24 @@ export type AppSnapshot = {
   links: MemoryLink[];
   memories: MemoryCard[];
   readerPages: ReaderPage[];
+  revisionItems: RevisionItem[];
   sessions: CaptureSession[];
   error?: string;
 };
 
 export async function fetchAppSnapshot(): Promise<AppSnapshot> {
   try {
-    const [healthResponse, sessionsResponse, memoriesResponse, linksResponse, readerPagesResponse] = await Promise.all([
+    const [healthResponse, sessionsResponse, memoriesResponse, linksResponse, readerPagesResponse, revisionResponse] = await Promise.all([
       fetch(`${API_BASE_URL}/health`),
       fetch(`${API_BASE_URL}/sessions`),
       fetch(`${API_BASE_URL}/memories`),
       fetch(`${API_BASE_URL}/memory-links`),
-      fetch(`${API_BASE_URL}/reader-pages`)
+      fetch(`${API_BASE_URL}/reader-pages`),
+      fetch(`${API_BASE_URL}/revision-items`)
     ]);
 
-    if (!healthResponse.ok || !sessionsResponse.ok || !memoriesResponse.ok || !linksResponse.ok || !readerPagesResponse.ok) {
-      return { error: "Continuum local API is not ready.", links: [], memories: [], readerPages: [], sessions: [] };
+    if (!healthResponse.ok || !sessionsResponse.ok || !memoriesResponse.ok || !linksResponse.ok || !readerPagesResponse.ok || !revisionResponse.ok) {
+      return { error: "Continuum local API is not ready.", links: [], memories: [], readerPages: [], revisionItems: [], sessions: [] };
     }
 
     const health = (await healthResponse.json()) as ApiHealth;
@@ -41,16 +44,18 @@ export async function fetchAppSnapshot(): Promise<AppSnapshot> {
     const memoriesPayload = (await memoriesResponse.json()) as { memories: MemoryCard[] };
     const linksPayload = (await linksResponse.json()) as { links: MemoryLink[] };
     const readerPagesPayload = (await readerPagesResponse.json()) as { readerPages: ReaderPage[] };
+    const revisionPayload = (await revisionResponse.json()) as { revisionItems: RevisionItem[] };
 
     return {
       health,
       links: linksPayload.links,
       memories: memoriesPayload.memories,
       readerPages: readerPagesPayload.readerPages,
+      revisionItems: revisionPayload.revisionItems,
       sessions: sessionsPayload.sessions
     };
   } catch {
-    return { error: "Continuum local API is not reachable.", links: [], memories: [], readerPages: [], sessions: [] };
+    return { error: "Continuum local API is not reachable.", links: [], memories: [], readerPages: [], revisionItems: [], sessions: [] };
   }
 }
 
@@ -146,4 +151,15 @@ export async function askMemoryRequest(question: string): Promise<AskMemoryAnswe
     throw new Error("Unable to ask memory");
   }
   return (await response.json()) as AskMemoryAnswer;
+}
+
+export async function updateRevisionItemRequest(id: string, status: RevisionItem["status"]) {
+  const response = await fetch(`${API_BASE_URL}/revision-items/${id}`, {
+    body: JSON.stringify({ status }),
+    headers: { "content-type": "application/json" },
+    method: "PATCH"
+  });
+  if (!response.ok) {
+    throw new Error("Unable to update revision item");
+  }
 }

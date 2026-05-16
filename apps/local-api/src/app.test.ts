@@ -266,3 +266,32 @@ test("search and ask-memory API return source-backed retrieval results", async (
   expect(askPayload.sources.length).toBeGreaterThan(0);
   expect(askPayload.answer).toContain("Based on");
 });
+
+test("revision API lists generated questions and updates review status", async () => {
+  const app = createApiApp({ db: createMemoryDatabase() });
+  const sessionResponse = await app.request("/api/sessions", {
+    body: JSON.stringify({ mode: "interview_prep", title: "Revision session" }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  const { session } = await sessionResponse.json();
+  await app.request(`/api/sessions/${session.id}/artifacts`, {
+    body: JSON.stringify({ artifactType: "manual_note", content: "LCP and bundle splitting are frontend interview topics." }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  await app.request(`/api/sessions/${session.id}/process`, { method: "POST" });
+
+  const listPayload = await (await app.request("/api/revision-items")).json();
+  const itemId = listPayload.revisionItems[0].id;
+
+  const updatePayload = await (
+    await app.request(`/api/revision-items/${itemId}`, {
+      body: JSON.stringify({ status: "mastered" }),
+      headers: { "content-type": "application/json" },
+      method: "PATCH"
+    })
+  ).json();
+
+  expect(updatePayload.revisionItem.status).toBe("mastered");
+});
