@@ -1,5 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import {
   CONTINUUM_PRODUCT_NAME,
   askMemory,
@@ -52,6 +53,18 @@ export type ApiAppOptions = {
 
 export function createApiApp({ db, runtime = {} }: ApiAppOptions) {
   const app = new Hono();
+
+  app.use(
+    "/api/*",
+    cors({
+      allowHeaders: ["content-type", "x-continuum-pairing-token"],
+      allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+      origin: (origin) => {
+        if (!origin) return "*";
+        return ["http://127.0.0.1:5173", "http://localhost:5173", "tauri://localhost"].includes(origin) ? origin : "";
+      }
+    })
+  );
 
   app.get("/api/health", (context) =>
     context.json({

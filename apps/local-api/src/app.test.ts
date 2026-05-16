@@ -33,6 +33,15 @@ test("session API creates, lists, patches, and soft-deletes sessions", async () 
   expect((await hiddenResponse.json()).sessions).toEqual([]);
 });
 
+test("API allows local desktop web shell requests", async () => {
+  const app = createApiApp({ db: createMemoryDatabase() });
+  const response = await app.request("/api/health", {
+    headers: { origin: "http://127.0.0.1:5173" }
+  });
+
+  expect(response.headers.get("access-control-allow-origin")).toBe("http://127.0.0.1:5173");
+});
+
 test("artifact API ingests and lists session artifacts", async () => {
   const app = createApiApp({ db: createMemoryDatabase() });
   const createdSessionResponse = await app.request("/api/sessions", {

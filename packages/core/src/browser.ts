@@ -1,4 +1,5 @@
 export { CONTINUUM_PRODUCT_NAME } from "./metadata";
+export type { AiProviderDescription } from "./ai/provider";
 export { artifactTypes, captureModes, captureStatuses } from "./domain";
 export type {
   ArtifactType,

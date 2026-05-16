@@ -19,16 +19,18 @@ import {
   fetchAppSnapshot,
   fetchSessionArtifacts,
   markImportantRequest,
+  processSessionRequest,
   rejectMemoryRequest,
   searchMemoryRequest,
   updateRevisionItemRequest,
   updateMemoryRequest,
   updateSessionRequest,
-  type AppSnapshot
+  type AppSnapshot,
+  type CaptureCapability
 } from "./api";
 import { navigationItems, type NavigationItem } from "./navigation";
 
-const emptySnapshot: AppSnapshot = { links: [], memories: [], readerPages: [], revisionItems: [], sessions: [] };
+const emptySnapshot: AppSnapshot = { captureCapabilities: [], links: [], memories: [], readerPages: [], revisionItems: [], sessions: [] };
 
 export function App() {
   const [activeView, setActiveView] = useState<NavigationItem["id"]>("home");
@@ -44,14 +46,18 @@ export function App() {
     () => navigationItems.find((item) => item.id === activeView)?.label ?? "Home",
     [activeView]
   );
+  const activeSession = snapshot.sessions.find((session) => session.status === "active" || session.status === "paused");
+  const processingCount = snapshot.sessions.filter((session) => session.status === "processing").length;
+  const suggestedCount = snapshot.memories.filter((memory) => memory.status === "suggested").length;
 
   return (
     <main className="app-shell">
       <aside className="sidebar">
-        <div>
+        <div className="brand-block">
           <div className="brand">{CONTINUUM_PRODUCT_NAME}</div>
+          <div className="brand-caption">AI-first memory cockpit</div>
           <div className={snapshot.health?.ok ? "status-pill status-pill--online" : "status-pill"}>
-            {snapshot.health?.ok ? "Local API online" : "Local API offline"}
+            {snapshot.health?.ok ? "API online" : "API offline"}
           </div>
         </div>
         <nav>
@@ -70,11 +76,20 @@ export function App() {
       </aside>
       <section className="workspace">
         <header className="page-header">
-          <p>Desktop capture memory system</p>
-          <h1>{activeLabel}</h1>
+          <div>
+            <p>Desktop capture memory system</p>
+            <h1>{activeLabel}</h1>
+          </div>
+          <div className="header-status-grid">
+            <StatusTile label="AI" value={snapshot.aiProvider?.configured ? snapshot.aiProvider.label : "Mock fallback"} />
+            <StatusTile label="Capture" value={activeSession ? activeSession.status : `${processingCount} ready`} />
+            <StatusTile label="Review" value={`${suggestedCount} suggested`} />
+          </div>
         </header>
         {snapshot.error ? <div className="notice">{snapshot.error}</div> : null}
         <View
+          aiLabel={snapshot.aiProvider?.configured ? snapshot.aiProvider.label : "Mock fallback"}
+          captureCapabilities={snapshot.captureCapabilities}
           links={snapshot.links}
           memories={snapshot.memories}
           readerPages={snapshot.readerPages}
@@ -84,11 +99,19 @@ export function App() {
           sessions={snapshot.sessions}
         />
       </section>
+      <CommandDock
+        activeSession={activeSession}
+        onNavigate={setActiveView}
+        processingCount={processingCount}
+        suggestedCount={suggestedCount}
+      />
     </main>
   );
 }
 
 function View({
+  aiLabel,
+  captureCapabilities,
   refresh,
   links,
   memories,
@@ -97,6 +120,8 @@ function View({
   sessions,
   view
 }: {
+  aiLabel: string;
+  captureCapabilities: CaptureCapability[];
   links: MemoryLink[];
   memories: MemoryCard[];
   readerPages: ReaderPage[];
@@ -110,7 +135,7 @@ function View({
   }
 
   if (view === "capture") {
-    return <CaptureView refresh={refresh} sessions={sessions} />;
+    return <CaptureView captureCapabilities={captureCapabilities} refresh={refresh} sessions={sessions} />;
   }
 
   if (view === "inbox") {
@@ -119,6 +144,10 @@ function View({
 
   if (view === "library") {
     return <LibraryView links={links} memories={memories} readerPages={readerPages} sessions={sessions} />;
+  }
+
+  if (view === "topics") {
+    return <TopicsView memories={memories} readerPages={readerPages} sessions={sessions} />;
   }
 
   if (view === "search") {
@@ -134,7 +163,7 @@ function View({
   }
 
   if (view === "settings") {
-    return <SettingsView />;
+    return <SettingsView aiLabel={aiLabel} />;
   }
 
   return (
@@ -144,8 +173,61 @@ function View({
   );
 }
 
-function CaptureView({ refresh, sessions }: { refresh: () => Promise<void>; sessions: CaptureSession[] }) {
+function StatusTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="status-tile">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function CommandDock({
+  activeSession,
+  onNavigate,
+  processingCount,
+  suggestedCount
+}: {
+  activeSession?: CaptureSession;
+  onNavigate: (view: NavigationItem["id"]) => void;
+  processingCount: number;
+  suggestedCount: number;
+}) {
+  return (
+    <aside className="command-dock" aria-label="Quick actions">
+      <div className="command-dock__status">
+        <span>{activeSession ? activeSession.mode.replace("_", " ") : "No active capture"}</span>
+        <strong>{activeSession?.title ?? `${processingCount} sessions ready`}</strong>
+      </div>
+      <div className="command-dock__actions">
+        <button onClick={() => onNavigate("capture")} title="Open capture controls" type="button">
+          Capture
+        </button>
+        <button onClick={() => onNavigate("inbox")} title="Review suggested memories" type="button">
+          Inbox {suggestedCount}
+        </button>
+        <button onClick={() => onNavigate("ask-memory")} title="Ask Memory" type="button">
+          Ask
+        </button>
+        <button onClick={() => onNavigate("settings")} title="Open settings" type="button">
+          Export
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+function CaptureView({
+  captureCapabilities,
+  refresh,
+  sessions
+}: {
+  captureCapabilities: CaptureCapability[];
+  refresh: () => Promise<void>;
+  sessions: CaptureSession[];
+}) {
   const activeSession = sessions.find((session) => session.status === "active" || session.status === "paused");
+  const processingSession = sessions.find((session) => session.status === "processing");
   const [artifactCount, setArtifactCount] = useState(0);
   const [form, setForm] = useState({
     mode: "article" as CaptureMode,
@@ -214,6 +296,7 @@ function CaptureView({ refresh, sessions }: { refresh: () => Promise<void>; sess
             </button>
           </div>
         </Panel>
+        <CaptureSourcesPanel capabilities={captureCapabilities} />
         <Panel title="Mark Moment">
           <div className="form-stack">
             <textarea
@@ -237,6 +320,45 @@ function CaptureView({ refresh, sessions }: { refresh: () => Promise<void>; sess
             </button>
           </div>
         </Panel>
+        {actionError ? <div className="notice">{actionError}</div> : null}
+      </div>
+    );
+  }
+
+  if (processingSession) {
+    return (
+      <div className="capture-layout">
+        <Panel title="Ready To Process">
+          <div className="active-capture">
+            <div>
+              <strong>{processingSession.title}</strong>
+              <span>
+                {processingSession.mode.replace("_", " ")} · automatic export after processing
+              </span>
+            </div>
+            <div className="button-row">
+              <button
+                className="primary-button"
+                onClick={() =>
+                  runAction(async () => {
+                    await processSessionRequest(processingSession.id);
+                  })
+                }
+                type="button"
+              >
+                Process Session
+              </button>
+              <button
+                className="secondary-button"
+                onClick={() => runAction(() => updateSessionRequest(processingSession.id, { status: "active" }).then())}
+                type="button"
+              >
+                Resume Capture
+              </button>
+            </div>
+          </div>
+        </Panel>
+        <CaptureSourcesPanel capabilities={captureCapabilities} />
         {actionError ? <div className="notice">{actionError}</div> : null}
       </div>
     );
@@ -303,11 +425,31 @@ function CaptureView({ refresh, sessions }: { refresh: () => Promise<void>; sess
           </button>
         </form>
       </Panel>
-      <Panel title="How Capture Works">
-        <p>Start a session, keep browsing normally, and the paired extension sends browser evidence to the local app only while capture is active.</p>
-      </Panel>
+      <CaptureSourcesPanel capabilities={captureCapabilities} />
       {actionError ? <div className="notice">{actionError}</div> : null}
     </div>
+  );
+}
+
+function CaptureSourcesPanel({ capabilities }: { capabilities: CaptureCapability[] }) {
+  return (
+    <Panel title="Capture Surfaces">
+      <div className="surface-list">
+        {capabilities.length > 0 ? (
+          capabilities.map((capability) => (
+            <article className="surface-item" key={capability.sourceType}>
+              <div>
+                <strong>{capability.sourceType.replace("_", " ")}</strong>
+                <span>{capability.artifactTypes.slice(0, 4).join(" · ")}</span>
+              </div>
+              <p>{capability.permissionNotes}</p>
+            </article>
+          ))
+        ) : (
+          <p>Capture capabilities load from the local API.</p>
+        )}
+      </div>
+    </Panel>
   );
 }
 
@@ -346,6 +488,58 @@ function Home({ memories, sessions }: { memories: MemoryCard[]; sessions: Captur
       <Panel title="Upcoming Revision">
         <p>Learning and interview sessions generate revision prompts after processing.</p>
       </Panel>
+    </div>
+  );
+}
+
+function TopicsView({
+  memories,
+  readerPages,
+  sessions
+}: {
+  memories: MemoryCard[];
+  readerPages: ReaderPage[];
+  sessions: CaptureSession[];
+}) {
+  const approvedOrSuggested = memories.filter((memory) => memory.status !== "rejected" && memory.status !== "archived");
+  const topics = Object.entries(
+    approvedOrSuggested.reduce<Record<string, MemoryCard[]>>((acc, memory) => {
+      acc[memory.category] = [...(acc[memory.category] ?? []), memory];
+      return acc;
+    }, {})
+  );
+
+  if (topics.length === 0) {
+    return (
+      <Panel title="Topics">
+        <p>Topics appear after sessions are processed into memory cards.</p>
+      </Panel>
+    );
+  }
+
+  return (
+    <div className="topic-grid">
+      {topics.map(([topic, topicMemories]) => {
+        const relatedSessionIds = new Set(topicMemories.map((memory) => memory.sessionId).filter(Boolean));
+        const relatedPages = readerPages.filter((page) => page.sourceSessionId && relatedSessionIds.has(page.sourceSessionId));
+        const relatedSessions = sessions.filter((session) => relatedSessionIds.has(session.id));
+        return (
+          <article className="topic-card" key={topic}>
+            <div className="memory-card__meta">
+              <span>{topicMemories.length} memories</span>
+              <span>{relatedPages.length} pages</span>
+            </div>
+            <h2>{topic.replace("_", " ")}</h2>
+            <p>{topicMemories[0]?.summary}</p>
+            <div className="topic-card__section">
+              <strong>Recent sessions</strong>
+              {relatedSessions.slice(0, 3).map((session) => (
+                <span key={session.id}>{session.title}</span>
+              ))}
+            </div>
+          </article>
+        );
+      })}
     </div>
   );
 }
@@ -622,7 +816,7 @@ function RevisionView({ refresh, revisionItems }: { refresh: () => Promise<void>
   );
 }
 
-function SettingsView() {
+function SettingsView({ aiLabel }: { aiLabel: string }) {
   const [exportDir, setExportDir] = useState("");
   const [exportResult, setExportResult] = useState<string | undefined>();
   const [error, setError] = useState<string | undefined>();
@@ -648,7 +842,7 @@ function SettingsView() {
           </div>
           <div>
             <dt>Markdown export directory</dt>
-            <dd>Export is explicit and writes approved memories plus reader pages into an Obsidian-style vault.</dd>
+            <dd>Sessions auto-export after processing; this control can refresh the vault on demand.</dd>
           </div>
           <div>
             <dt>Extension pairing</dt>
@@ -660,11 +854,15 @@ function SettingsView() {
           </div>
           <div>
             <dt>Retention policies</dt>
-            <dd>Future controls: auto-delete raw media after processing, exclude apps/domains, private mode, and encryption at rest.</dd>
+            <dd>Raw media cleanup, app/domain exclusions, private capture mode, and encryption controls.</dd>
           </div>
           <div>
             <dt>AI provider</dt>
-            <dd>Mock/local processing works without keys. Optional cloud transcription and LLM providers stay disabled until configured.</dd>
+            <dd>{aiLabel}</dd>
+          </div>
+          <div>
+            <dt>Obsidian graph</dt>
+            <dd>Markdown export includes `Graph/continuum-graph.json` and a Mermaid graph page.</dd>
           </div>
         </dl>
       </Panel>

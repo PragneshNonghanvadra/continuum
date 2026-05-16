@@ -115,7 +115,7 @@ export function listCaptureCapabilities() {
     },
     {
       artifactTypes: ["native_app_text", "native_window_snapshot", "ocr_text", "screenshot"],
-      permissionNotes: "Requires macOS Accessibility and Screen Recording permissions for the future native helper.",
+      permissionNotes: "Requires macOS Accessibility and Screen Recording permissions for desktop app capture.",
       sourceType: "macos_app"
     },
     {
