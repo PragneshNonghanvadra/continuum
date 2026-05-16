@@ -1,4 +1,13 @@
-import type { ApiHealth, CaptureArtifact, CaptureMode, CaptureSession, CaptureStatus, MemoryCard, MemoryLink } from "@continuum/core";
+import type {
+  ApiHealth,
+  CaptureArtifact,
+  CaptureMode,
+  CaptureSession,
+  CaptureStatus,
+  MemoryCard,
+  MemoryLink,
+  ReaderPage
+} from "@continuum/core";
 
 const API_BASE_URL = "http://127.0.0.1:5174/api";
 
@@ -6,36 +15,40 @@ export type AppSnapshot = {
   health?: ApiHealth;
   links: MemoryLink[];
   memories: MemoryCard[];
+  readerPages: ReaderPage[];
   sessions: CaptureSession[];
   error?: string;
 };
 
 export async function fetchAppSnapshot(): Promise<AppSnapshot> {
   try {
-    const [healthResponse, sessionsResponse, memoriesResponse, linksResponse] = await Promise.all([
+    const [healthResponse, sessionsResponse, memoriesResponse, linksResponse, readerPagesResponse] = await Promise.all([
       fetch(`${API_BASE_URL}/health`),
       fetch(`${API_BASE_URL}/sessions`),
       fetch(`${API_BASE_URL}/memories`),
-      fetch(`${API_BASE_URL}/memory-links`)
+      fetch(`${API_BASE_URL}/memory-links`),
+      fetch(`${API_BASE_URL}/reader-pages`)
     ]);
 
-    if (!healthResponse.ok || !sessionsResponse.ok || !memoriesResponse.ok || !linksResponse.ok) {
-      return { error: "Continuum local API is not ready.", links: [], memories: [], sessions: [] };
+    if (!healthResponse.ok || !sessionsResponse.ok || !memoriesResponse.ok || !linksResponse.ok || !readerPagesResponse.ok) {
+      return { error: "Continuum local API is not ready.", links: [], memories: [], readerPages: [], sessions: [] };
     }
 
     const health = (await healthResponse.json()) as ApiHealth;
     const sessionsPayload = (await sessionsResponse.json()) as { sessions: CaptureSession[] };
     const memoriesPayload = (await memoriesResponse.json()) as { memories: MemoryCard[] };
     const linksPayload = (await linksResponse.json()) as { links: MemoryLink[] };
+    const readerPagesPayload = (await readerPagesResponse.json()) as { readerPages: ReaderPage[] };
 
     return {
       health,
       links: linksPayload.links,
       memories: memoriesPayload.memories,
+      readerPages: readerPagesPayload.readerPages,
       sessions: sessionsPayload.sessions
     };
   } catch {
-    return { error: "Continuum local API is not reachable.", links: [], memories: [], sessions: [] };
+    return { error: "Continuum local API is not reachable.", links: [], memories: [], readerPages: [], sessions: [] };
   }
 }
 

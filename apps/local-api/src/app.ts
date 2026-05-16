@@ -15,8 +15,10 @@ import {
   listMemoryLinks,
   listMemoryLinksForMemory,
   listMemories,
+  listReaderPages,
   listSessions,
   processCapturedSession,
+  getReaderPage,
   updateMemory,
   updateMemoryStatus,
   updateSession,
@@ -205,6 +207,13 @@ export function createApiApp({ db }: ApiAppOptions) {
   app.get("/api/memories/:id/links", (context) => context.json({ links: listMemoryLinksForMemory(db, context.req.param("id")) }));
 
   app.get("/api/memory-links", (context) => context.json({ links: listMemoryLinks(db) }));
+
+  app.get("/api/reader-pages", (context) => context.json({ readerPages: listReaderPages(db) }));
+
+  app.get("/api/reader-pages/:id", (context) => {
+    const readerPage = getReaderPage(db, context.req.param("id"));
+    return readerPage ? context.json({ readerPage }) : jsonError(context, 404, "Reader page not found");
+  });
 
   app.post("/api/extension/pair", async (context) => {
     const body = await readJsonBody<{ browserName?: string }>(context);

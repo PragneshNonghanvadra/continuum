@@ -5,7 +5,8 @@ import {
   type CaptureMode,
   type CaptureSession,
   type MemoryCard,
-  type MemoryLink
+  type MemoryLink,
+  type ReaderPage
 } from "@continuum/core";
 import {
   approveMemoryRequest,
@@ -20,7 +21,7 @@ import {
 } from "./api";
 import { navigationItems, type NavigationItem } from "./navigation";
 
-const emptySnapshot: AppSnapshot = { links: [], memories: [], sessions: [] };
+const emptySnapshot: AppSnapshot = { links: [], memories: [], readerPages: [], sessions: [] };
 
 export function App() {
   const [activeView, setActiveView] = useState<NavigationItem["id"]>("home");
@@ -66,7 +67,14 @@ export function App() {
           <h1>{activeLabel}</h1>
         </header>
         {snapshot.error ? <div className="notice">{snapshot.error}</div> : null}
-        <View links={snapshot.links} memories={snapshot.memories} refresh={refreshSnapshot} view={activeView} sessions={snapshot.sessions} />
+        <View
+          links={snapshot.links}
+          memories={snapshot.memories}
+          readerPages={snapshot.readerPages}
+          refresh={refreshSnapshot}
+          view={activeView}
+          sessions={snapshot.sessions}
+        />
       </section>
     </main>
   );
@@ -76,11 +84,13 @@ function View({
   refresh,
   links,
   memories,
+  readerPages,
   sessions,
   view
 }: {
   links: MemoryLink[];
   memories: MemoryCard[];
+  readerPages: ReaderPage[];
   refresh: () => Promise<void>;
   sessions: CaptureSession[];
   view: NavigationItem["id"];
@@ -95,6 +105,10 @@ function View({
 
   if (view === "inbox") {
     return <InboxView links={links} memories={memories} refresh={refresh} sessions={sessions} />;
+  }
+
+  if (view === "library") {
+    return <LibraryView links={links} memories={memories} readerPages={readerPages} sessions={sessions} />;
   }
 
   if (view === "settings") {
@@ -357,6 +371,99 @@ function InboxView({
       {suggested.map((memory) => (
         <MemoryReviewCard key={memory.id} links={links} memory={memory} refresh={refresh} sessions={sessions} />
       ))}
+    </div>
+  );
+}
+
+function LibraryView({
+  links,
+  memories,
+  readerPages,
+  sessions
+}: {
+  links: MemoryLink[];
+  memories: MemoryCard[];
+  readerPages: ReaderPage[];
+  sessions: CaptureSession[];
+}) {
+  const [selectedPageId, setSelectedPageId] = useState(readerPages[0]?.id);
+  const selectedPage = readerPages.find((page) => page.id === selectedPageId) ?? readerPages[0];
+  const grouped = sessions.reduce<Record<string, CaptureSession[]>>((acc, session) => {
+    acc[session.mode] = [...(acc[session.mode] ?? []), session];
+    return acc;
+  }, {});
+  const pageMemories = selectedPage?.sourceSessionId
+    ? memories.filter((memory) => memory.sessionId === selectedPage.sourceSessionId && memory.status !== "rejected")
+    : [];
+  const relatedLinks = pageMemories.flatMap((memory) => links.filter((link) => link.sourceMemoryId === memory.id || link.targetMemoryId === memory.id));
+
+  if (!selectedPage) {
+    return (
+      <Panel title="Library">
+        <p>No reader pages yet. Process a capture session to create your first session page.</p>
+      </Panel>
+    );
+  }
+
+  return (
+    <div className="library-layout">
+      <aside className="library-sidebar">
+        {Object.entries(grouped).map(([mode, modeSessions]) => (
+          <section key={mode}>
+            <h2>{mode.replace("_", " ")}</h2>
+            {modeSessions.map((session) => {
+              const page = readerPages.find((readerPage) => readerPage.sourceSessionId === session.id);
+              return (
+                <button
+                  className="library-page-button"
+                  disabled={!page}
+                  key={session.id}
+                  onClick={() => page && setSelectedPageId(page.id)}
+                  type="button"
+                >
+                  {session.title}
+                </button>
+              );
+            })}
+          </section>
+        ))}
+      </aside>
+      <article className="reader-page">
+        <MarkdownView markdown={selectedPage.contentMarkdown} />
+        <section className="reader-page__links">
+          <h2>Backlinks and Evidence</h2>
+          {pageMemories.length > 0 ? (
+            <ul>
+              {pageMemories.map((memory) => (
+                <li key={memory.id}>{memory.title}</li>
+              ))}
+            </ul>
+          ) : (
+            <p>No approved or suggested memories are attached to this page yet.</p>
+          )}
+          {relatedLinks.length > 0 ? (
+            <ul>
+              {relatedLinks.map((link) => (
+                <li key={link.id}>{link.reason}</li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+      </article>
+    </div>
+  );
+}
+
+function MarkdownView({ markdown }: { markdown: string }) {
+  return (
+    <div className="markdown-view">
+      {markdown.split("\n").map((line, index) => {
+        if (line.startsWith("# ")) return <h1 key={index}>{line.slice(2)}</h1>;
+        if (line.startsWith("## ")) return <h2 key={index}>{line.slice(3)}</h2>;
+        if (line.startsWith("- ")) return <li key={index}>{line.slice(2)}</li>;
+        if (!line.trim()) return <br key={index} />;
+        return <p key={index}>{line}</p>;
+      })}
     </div>
   );
 }

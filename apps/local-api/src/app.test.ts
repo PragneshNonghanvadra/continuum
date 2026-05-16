@@ -215,3 +215,25 @@ test("memory review API edits, approves, rejects, and archives suggested cards",
   });
   expect((await archiveResponse.json()).memory.status).toBe("archived");
 });
+
+test("reader page API lists generated session pages", async () => {
+  const app = createApiApp({ db: createMemoryDatabase() });
+  const sessionResponse = await app.request("/api/sessions", {
+    body: JSON.stringify({ mode: "article", title: "Reader session" }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  const { session } = await sessionResponse.json();
+  await app.request(`/api/sessions/${session.id}/artifacts`, {
+    body: JSON.stringify({ artifactType: "article_text", content: "Browser capture creates reader pages." }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  await app.request(`/api/sessions/${session.id}/process`, { method: "POST" });
+
+  const pagesResponse = await app.request("/api/reader-pages");
+  const pages = await pagesResponse.json();
+
+  expect(pages.readerPages[0].title).toBe("Reader session");
+  expect(pages.readerPages[0].contentMarkdown).toContain("## Key Takeaways");
+});
