@@ -86,3 +86,20 @@ test("HTTP AI provider reports failed generations", async () => {
     })
   ).rejects.toThrow("AI provider request failed");
 });
+
+test("HTTP AI provider includes upstream error details", async () => {
+  const provider = new HttpAiProvider({
+    fetcher: async () => new Response(JSON.stringify({ error: "Codex bridge upstream URL is not configured." }), { status: 503 }),
+    kind: "codex_app_server",
+    url: "http://127.0.0.1:4010/continuum/process"
+  });
+
+  await expect(
+    provider.generateJson({
+      input: {},
+      prompt: "Process this capture session.",
+      schemaName: "ProcessSessionResult",
+      task: "process_session"
+    })
+  ).rejects.toThrow("AI provider request failed with 503: Codex bridge upstream URL is not configured.");
+});

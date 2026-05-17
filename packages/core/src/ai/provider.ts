@@ -118,12 +118,34 @@ export class HttpAiProvider implements AiGenerationProvider {
     });
 
     if (!response.ok) {
-      throw new Error(`AI provider request failed with ${response.status}`);
+      const detail = await readProviderErrorDetail(response);
+      throw new Error(`AI provider request failed with ${response.status}${detail ? `: ${detail}` : ""}`);
     }
 
     const payload = await response.json();
     return (payload && typeof payload === "object" && "output" in payload ? payload.output : payload) as T;
   }
+}
+
+async function readProviderErrorDetail(response: Response) {
+  try {
+    const text = await response.text();
+    if (!text.trim()) return undefined;
+    try {
+      const payload = JSON.parse(text) as { error?: unknown; message?: unknown };
+      const detail = typeof payload.error === "string" ? payload.error : typeof payload.message === "string" ? payload.message : undefined;
+      return detail ? truncateDetail(detail) : truncateDetail(text);
+    } catch {
+      return truncateDetail(text);
+    }
+  } catch {
+    return undefined;
+  }
+}
+
+function truncateDetail(detail: string) {
+  const trimmed = detail.trim();
+  return trimmed.length > 300 ? `${trimmed.slice(0, 297)}...` : trimmed;
 }
 
 export function createAiProviderFromEnv(env: AiProviderEnvironment = process.env): AiGenerationProvider {
