@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { createBridgeApp } from "./app";
-import { OpenAiResponsesBridgeProvider } from "./providers";
+import { OpenAiResponsesBridgeProvider, OpenRouterBridgeProvider, createBridgeProviderFromEnv } from "./providers";
 
 const now = "2026-05-17T00:00:00.000Z";
 
@@ -183,6 +183,80 @@ describe("codex AI bridge app", () => {
     expect(capturedBody?.model).toBe("continuum-bridge-fixture");
     expect((capturedBody?.text as { format: { type: string } }).format.type).toBe("json_object");
     expect(payload.output.summary).toBe("AI summary");
+  });
+
+  it("can call an OpenRouter chat completions upstream", async () => {
+    let capturedBody: Record<string, unknown> | undefined;
+    let capturedHeaders: Headers | undefined;
+    let capturedUrl = "";
+    const provider = new OpenRouterBridgeProvider({
+      apiKey: "openrouter-test-key",
+      fetcher: async (input, init) => {
+        capturedUrl = String(input);
+        capturedHeaders = new Headers(init?.headers);
+        capturedBody = JSON.parse(String(init?.body));
+        return Response.json({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  entities: [],
+                  links: [],
+                  memories: [
+                    {
+                      category: "project",
+                      confidence: 0.91,
+                      evidence: { artifactIds: ["artifact_1"] },
+                      fullText: "OpenRouter can power AI-first Continuum processing.",
+                      importance: 4,
+                      memoryType: "insight",
+                      summary: "OpenRouter powers Continuum processing.",
+                      title: "OpenRouter powers Continuum"
+                    }
+                  ],
+                  readerPage: {
+                    contentMarkdown: "# OpenRouter reader",
+                    pageType: "session",
+                    slug: "openrouter-reader",
+                    summary: "OpenRouter reader",
+                    title: "OpenRouter reader"
+                  },
+                  revisionItems: [],
+                  summary: "OpenRouter summary",
+                  tags: ["openrouter"]
+                })
+              }
+            }
+          ]
+        });
+      },
+      model: "openai/test-model"
+    });
+    const app = createBridgeApp({ provider });
+
+    const response = await app.request("/continuum/process", {
+      body: JSON.stringify(processRequest),
+      headers: { "content-type": "application/json" },
+      method: "POST"
+    });
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(capturedUrl).toBe("https://openrouter.ai/api/v1/chat/completions");
+    expect(capturedHeaders?.get("authorization")).toBe("Bearer openrouter-test-key");
+    expect(capturedBody?.model).toBe("continuum-bridge-fixture");
+    expect((capturedBody?.response_format as { type: string }).type).toBe("json_object");
+    expect(payload.output.summary).toBe("OpenRouter summary");
+  });
+
+  it("creates an OpenRouter provider from bridge environment", () => {
+    const provider = createBridgeProviderFromEnv({
+      CONTINUUM_CODEX_BRIDGE_PROVIDER: "openrouter",
+      OPENROUTER_API_KEY: "openrouter-test-key"
+    });
+
+    expect(provider.id).toBe("openrouter");
+    expect(provider.isConfigured()).toBe(true);
   });
 });
 

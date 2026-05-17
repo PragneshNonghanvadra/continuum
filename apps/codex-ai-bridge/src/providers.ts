@@ -175,6 +175,84 @@ export class OpenAiResponsesBridgeProvider implements BridgeProvider {
   }
 }
 
+export type OpenRouterBridgeProviderOptions = {
+  apiKey?: string;
+  fetcher?: BridgeFetch;
+  model?: string;
+  url?: string;
+};
+
+export class OpenRouterBridgeProvider implements BridgeProvider {
+  readonly id = "openrouter";
+  private readonly apiKey?: string;
+  private readonly fetcher: BridgeFetch;
+  private readonly model: string;
+  private readonly url: string;
+
+  constructor(options: OpenRouterBridgeProviderOptions = {}) {
+    this.apiKey = options.apiKey;
+    this.fetcher = options.fetcher ?? fetch;
+    this.model = options.model ?? "openai/gpt-4.1-mini";
+    this.url = options.url ?? "https://openrouter.ai/api/v1/chat/completions";
+  }
+
+  isConfigured() {
+    return Boolean(this.apiKey);
+  }
+
+  async generate(request: BridgeGenerationRequest) {
+    if (!this.apiKey) {
+      throw new BridgeProviderError("OPENROUTER_API_KEY is required for the OpenRouter bridge provider.", 503);
+    }
+
+    const response = await this.fetcher(this.url, {
+      body: JSON.stringify({
+        messages: [
+          {
+            content: "Return only JSON. Do not wrap the response in Markdown. The JSON must match the requested Continuum schema exactly.",
+            role: "system"
+          },
+          {
+            content: [
+              request.prompt,
+              "",
+              "Continuum request JSON:",
+              JSON.stringify({
+                input: request.input,
+                schemaName: request.schemaName,
+                task: request.task
+              })
+            ].join("\n"),
+            role: "user"
+          }
+        ],
+        model: request.model ?? this.model,
+        response_format: {
+          type: "json_object"
+        }
+      }),
+      headers: {
+        authorization: `Bearer ${this.apiKey}`,
+        "content-type": "application/json",
+        "http-referer": "http://127.0.0.1:5173",
+        "x-title": "Continuum"
+      },
+      method: "POST"
+    });
+
+    if (!response.ok) {
+      throw new BridgeProviderError(`OpenRouter request failed with ${response.status}.`, 502);
+    }
+
+    const payload = await response.json();
+    const output = parseOpenRouterJsonOutput(payload);
+    if (!isValidOutputForSchema(request.schemaName, output)) {
+      throw new BridgeProviderError(`OpenRouter returned an invalid ${request.schemaName}.`, 502);
+    }
+    return output;
+  }
+}
+
 export class BridgeProviderError extends Error {
   constructor(
     message: string,
@@ -192,6 +270,13 @@ export function createBridgeProviderFromEnv(env: Record<string, string | undefin
   if (provider === "openai_responses") {
     return new OpenAiResponsesBridgeProvider({
       apiKey: env.OPENAI_API_KEY ?? env.CONTINUUM_CODEX_BRIDGE_API_KEY ?? env.CONTINUUM_AI_API_KEY,
+      model: env.CONTINUUM_CODEX_BRIDGE_MODEL ?? env.CONTINUUM_AI_MODEL,
+      url: env.CONTINUUM_CODEX_BRIDGE_UPSTREAM_URL
+    });
+  }
+  if (provider === "openrouter") {
+    return new OpenRouterBridgeProvider({
+      apiKey: env.OPENROUTER_API_KEY ?? env.CONTINUUM_CODEX_BRIDGE_API_KEY ?? env.CONTINUUM_AI_API_KEY,
       model: env.CONTINUUM_CODEX_BRIDGE_MODEL ?? env.CONTINUUM_AI_MODEL,
       url: env.CONTINUUM_CODEX_BRIDGE_UPSTREAM_URL
     });
@@ -215,6 +300,18 @@ function parseOpenAiJsonOutput(payload: unknown) {
   }
 }
 
+function parseOpenRouterJsonOutput(payload: unknown) {
+  const text = extractOpenRouterOutputText(payload);
+  if (!text) {
+    throw new BridgeProviderError("OpenRouter returned no output text.", 502);
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new BridgeProviderError("OpenRouter output was not valid JSON.", 502);
+  }
+}
+
 function extractOpenAiOutputText(payload: unknown): string | undefined {
   if (!payload || typeof payload !== "object") return undefined;
   const candidate = payload as {
@@ -226,6 +323,14 @@ function extractOpenAiOutputText(payload: unknown): string | undefined {
     ?.flatMap((item) => item.content ?? [])
     .map((content) => content.text)
     .find((text): text is string => typeof text === "string" && text.length > 0);
+}
+
+function extractOpenRouterOutputText(payload: unknown): string | undefined {
+  if (!payload || typeof payload !== "object") return undefined;
+  const candidate = payload as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  return candidate.choices?.map((choice) => choice.message?.content).find((text): text is string => typeof text === "string" && text.length > 0);
 }
 
 function isProcessSessionResult(value: unknown): value is ProcessSessionResult {

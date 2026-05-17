@@ -60,6 +60,15 @@ Load `apps/chrome-extension/dist-extension` as an unpacked extension. It capture
 
 ## AI Bridge
 
+For strict AI-first testing with OpenRouter, run the bridge and point Continuum at it:
+
+```bash
+OPENROUTER_API_KEY=... \
+CONTINUUM_CODEX_BRIDGE_PROVIDER=openrouter \
+CONTINUUM_CODEX_BRIDGE_MODEL=openai/gpt-4.1-mini \
+bun run dev:ai-bridge
+```
+
 For strict AI-first testing with a frontier OpenAI model, run the bridge and point Continuum at it:
 
 ```bash
@@ -79,4 +88,4 @@ CONTINUUM_AI_REQUIRE_PROVIDER=true \
 bun run dev:api
 ```
 
-The bridge also supports `CONTINUUM_CODEX_BRIDGE_PROVIDER=http` for a local model server that already accepts Continuum's `{ task, schemaName, prompt, input }` contract. The bridge fixture provider is for automated tests only.
+The bridge also supports `CONTINUUM_CODEX_BRIDGE_PROVIDER=http` for a local model server that already accepts Continuum's `{ task, schemaName, prompt, input }` contract. The `openrouter` provider talks directly to OpenRouter's chat-completions API, so it does not need `CONTINUUM_CODEX_BRIDGE_UPSTREAM_URL` unless you intentionally want to override the endpoint. The bridge fixture provider is for automated tests only.
