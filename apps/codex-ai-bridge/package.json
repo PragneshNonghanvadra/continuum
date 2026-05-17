@@ -1,0 +1,14 @@
+{
+  "name": "@continuum/codex-ai-bridge",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --hot src/index.ts",
+    "build": "tsc -p tsconfig.json --noEmit",
+    "start": "bun src/index.ts",
+    "test": "bun test src"
+  },
+  "dependencies": {
+    "@continuum/core": "workspace:*"
+  }
+}
