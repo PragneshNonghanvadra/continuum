@@ -6,12 +6,15 @@ struct ContinuumNativeCaptureCommand {
     static func main() throws {
         let command = CommandLine.arguments.dropFirst().first ?? "help"
         switch command {
+        case "accessibility-sample":
+            let event = try MacAccessibilitySampler().sampleFrontmostApplication().toNativeCaptureEvent()
+            try printJson(event)
         case "capabilities":
             try printJson(nativeCaptureCapabilities)
         case "sample":
             try printJson(sampleEvent())
         default:
-            print("usage: continuum-native-capture capabilities|sample")
+            print("usage: continuum-native-capture accessibility-sample|capabilities|sample")
         }
     }
 

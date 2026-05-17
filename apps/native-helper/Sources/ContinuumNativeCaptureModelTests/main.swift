@@ -5,6 +5,7 @@ import Foundation
 struct ContinuumNativeCaptureModelTests {
     static func main() throws {
         try nativeCaptureEventEncodesContinuumApiShape()
+        try accessibilitySampleMapsToNativeArtifacts()
         print("ContinuumNativeCaptureModelTests passed")
     }
 
@@ -47,6 +48,28 @@ struct ContinuumNativeCaptureModelTests {
         if !condition {
             throw TestFailure(message)
         }
+    }
+
+    private static func accessibilitySampleMapsToNativeArtifacts() throws {
+        let sampler = FixtureAccessibilitySampler(
+            sample: AccessibilitySample(
+                appName: "Preview",
+                bundleId: "com.apple.Preview",
+                windowTitle: "paper.pdf",
+                selectedText: "Selected PDF text",
+                documentText: "Document level text",
+                sourceUrl: nil,
+                filePath: "/Users/me/Downloads/paper.pdf",
+                permissionState: "granted",
+                metadata: ["fixture": .bool(true)]
+            )
+        )
+
+        let event = try sampler.sampleFrontmostApplication().toNativeCaptureEvent(sessionId: "session_1")
+
+        try expect(event.source?.sourceType == "macos_app", "Accessibility source should be a macOS app")
+        try expect(event.artifacts.contains { $0.artifactType == "native_app_text" }, "Selected text should become native_app_text")
+        try expect(event.artifacts.contains { $0.artifactType == "document_text" }, "Document text should become document_text")
     }
 }
 
