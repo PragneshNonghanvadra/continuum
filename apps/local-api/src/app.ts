@@ -86,13 +86,18 @@ export function createApiApp({ db, logger, runtime = {} }: ApiAppOptions) {
   );
   app.use("/api/*", async (context, next) => {
     const requestId = requestIdFor(context);
+    const path = new URL(context.req.url).pathname;
     const startedAt = performance.now();
     context.header("x-continuum-request-id", requestId);
     await next();
+    if (shouldSkipRequestLog(path, context.res.status)) {
+      return;
+    }
+
     logger?.info("api.request", {
       durationMs: Math.round(performance.now() - startedAt),
       method: context.req.method,
-      path: new URL(context.req.url).pathname,
+      path,
       requestId,
       status: context.res.status
     });
@@ -555,6 +560,10 @@ function parseBoolean(value: string | undefined) {
 
 function requestIdFor(context: Context) {
   return context.req.header("x-request-id") ?? context.res.headers.get("x-continuum-request-id") ?? crypto.randomUUID();
+}
+
+function shouldSkipRequestLog(path: string, status: number) {
+  return path === "/api/extension/active-session" && status < 500;
 }
 
 function statusForProcessError(message: string): 404 | 500 | 502 | 503 {

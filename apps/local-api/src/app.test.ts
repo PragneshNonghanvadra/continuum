@@ -182,6 +182,27 @@ test("extension API pairs and exposes only active capture sessions", async () =>
   expect((await activeResponse.json()).session.title).toBe("Extension capture");
 });
 
+test("request logging skips normal extension active-session polling", async () => {
+  const logs: string[] = [];
+  const app = createApiApp({ db: createMemoryDatabase(), logger: lineLogger(logs) });
+  const pairingResponse = await app.request("/api/extension/pair", {
+    body: JSON.stringify({ browserName: "Chrome" }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  const { pairing } = await pairingResponse.json();
+
+  await app.request("/api/extension/active-session", {
+    headers: { "x-continuum-pairing-token": pairing.pairingToken }
+  });
+
+  expect(
+    logs
+      .map((line) => JSON.parse(line))
+      .some((entry) => entry.message === "api.request" && entry.path === "/api/extension/active-session")
+  ).toBe(false);
+});
+
 test("extension artifact ingest writes to the active session only", async () => {
   const app = createApiApp({ db: createMemoryDatabase() });
   const pairingResponse = await app.request("/api/extension/pair", {
