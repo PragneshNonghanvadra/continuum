@@ -65,10 +65,15 @@ export {
 } from "./ai/provider";
 export {
   DisabledCloudTranscriptionProvider,
+  HttpTranscriptionProvider,
+  LocalCommandTranscriptionProvider,
   MockTranscriptionProvider,
+  createTranscriptionProviderFromEnv,
   storeTranscriptArtifact,
+  type TranscriptionCommandRunner,
   type TranscriptionInput,
   type TranscriptionProvider,
+  type TranscriptionProviderEnvironment,
   type TranscriptionResult
 } from "./processing/transcription";
 export { MockMemoryProcessor } from "./processing/mockMemoryProcessor";
