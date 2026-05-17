@@ -70,6 +70,73 @@ test("artifact API ingests and lists session artifacts", async () => {
   expect(listed.artifacts[0].metadata).toEqual({ source: "browser" });
 });
 
+test("media transcript API ingests transcript segments", async () => {
+  const app = createApiApp({ db: createMemoryDatabase() });
+  const createdSessionResponse = await app.request("/api/sessions", {
+    body: JSON.stringify({ mode: "audio", title: "Native audio" }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  const { session } = await createdSessionResponse.json();
+
+  const transcriptResponse = await app.request(`/api/sessions/${session.id}/transcripts`, {
+    body: JSON.stringify({
+      confidence: 0.92,
+      language: "en",
+      provider: "local-command",
+      segments: [
+        { end: 12, start: 0, text: "Continuum captures native audio metadata." },
+        { end: 24, start: 12, text: "Transcripts become searchable local artifacts." }
+      ]
+    }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+
+  expect(transcriptResponse.status).toBe(201);
+  const payload = await transcriptResponse.json();
+  expect(payload.artifact.artifactType).toBe("transcript");
+  expect(payload.artifact.content).toContain("Transcripts become searchable");
+  expect(payload.artifact.metadata.segmentCount).toBe(2);
+});
+
+test("media timeline API ingests timestamped media artifacts", async () => {
+  const app = createApiApp({ db: createMemoryDatabase() });
+  const createdSessionResponse = await app.request("/api/sessions", {
+    body: JSON.stringify({ mode: "video", title: "Downloaded lecture" }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  const { session } = await createdSessionResponse.json();
+
+  const timelineResponse = await app.request(`/api/sessions/${session.id}/media-events`, {
+    body: JSON.stringify({
+      events: [
+        {
+          artifactType: "system_audio_metadata",
+          metadata: { currentTime: 42, title: "Lecture" },
+          timestampStart: 42
+        },
+        {
+          artifactType: "video_caption",
+          content: "Hydration cost matters.",
+          timestampEnd: 52,
+          timestampStart: 45
+        }
+      ]
+    }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+
+  expect(timelineResponse.status).toBe(201);
+  const payload = await timelineResponse.json();
+  expect(payload.artifacts.map((artifact: { artifactType: string }) => artifact.artifactType)).toEqual([
+    "system_audio_metadata",
+    "video_caption"
+  ]);
+});
+
 test("important moment API stores explicit user markers", async () => {
   const app = createApiApp({ db: createMemoryDatabase() });
   const sessionResponse = await app.request("/api/sessions", {

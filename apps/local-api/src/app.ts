@@ -158,6 +158,80 @@ export function createApiApp({ db, runtime = {} }: ApiAppOptions) {
     return context.json({ artifacts: listArtifactsForSession(db, sessionId) });
   });
 
+  app.post("/api/sessions/:id/transcripts", async (context) => {
+    const sessionId = context.req.param("id");
+    if (!getSession(db, sessionId)) {
+      return jsonError(context, 404, "Session not found");
+    }
+
+    const body = await readJsonBody<{
+      confidence?: number;
+      language?: string;
+      provider?: string;
+      segments?: Array<{ end?: number; start?: number; text?: string }>;
+      text?: string;
+    }>(context);
+    const segments = body.segments ?? [];
+    const content =
+      body.text ??
+      segments
+        .map((segment) => segment.text?.trim())
+        .filter(Boolean)
+        .join("\n");
+    if (!content) {
+      return jsonError(context, 400, "Transcript text or segments are required");
+    }
+
+    const artifact = createArtifact(db, {
+      artifactType: "transcript",
+      content,
+      metadata: {
+        confidence: body.confidence,
+        language: body.language,
+        provider: body.provider ?? "unknown",
+        segmentCount: segments.length,
+        segments
+      },
+      sessionId
+    });
+    return context.json({ artifact }, 201);
+  });
+
+  app.post("/api/sessions/:id/media-events", async (context) => {
+    const sessionId = context.req.param("id");
+    if (!getSession(db, sessionId)) {
+      return jsonError(context, 404, "Session not found");
+    }
+
+    const body = await readJsonBody<{
+      events?: Array<{
+        artifactType?: ArtifactType;
+        content?: string;
+        filePath?: string;
+        metadata?: Record<string, unknown>;
+        timestampEnd?: number;
+        timestampStart?: number;
+      }>;
+    }>(context);
+    if (!body.events?.length) {
+      return jsonError(context, 400, "Media events are required");
+    }
+
+    const artifacts = body.events.map((event) =>
+      createArtifact(db, {
+        artifactType: event.artifactType ?? "system_audio_metadata",
+        content: event.content,
+        filePath: event.filePath,
+        metadata: event.metadata,
+        sessionId,
+        timestampEnd: event.timestampEnd,
+        timestampStart: event.timestampStart
+      })
+    );
+
+    return context.json({ artifacts }, 201);
+  });
+
   app.get("/api/sessions/:id/capture-diagnostics", (context) => {
     const sessionId = context.req.param("id");
     const session = getSession(db, sessionId);
