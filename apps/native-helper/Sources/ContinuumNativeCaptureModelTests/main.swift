@@ -8,6 +8,7 @@ struct ContinuumNativeCaptureModelTests {
         try accessibilitySampleMapsToNativeArtifacts()
         try ocrResultMapsToDerivedArtifactWithoutRawRetention()
         try ocrPipelineDeletesTemporarySnapshotByDefault()
+        try mediaSampleMapsToSystemAudioMetadata()
         print("ContinuumNativeCaptureModelTests passed")
     }
 
@@ -105,6 +106,29 @@ struct ContinuumNativeCaptureModelTests {
 
         try expect(event?.artifacts.first?.content == "Temporary OCR text", "OCR pipeline should return derived text")
         try expect(!FileManager.default.fileExists(atPath: tempUrl.path), "OCR pipeline should delete temporary raw image by default")
+    }
+
+    private static func mediaSampleMapsToSystemAudioMetadata() throws {
+        let sampler = FixtureMediaAppSampler(
+            sample: MediaPlaybackSample(
+                appName: "Music",
+                bundleId: "com.apple.Music",
+                trackTitle: "Continuum Architecture Notes",
+                artist: "Local Podcast",
+                album: "Capture Sessions",
+                currentTime: 42,
+                duration: 600,
+                windowTitle: "Continuum Architecture Notes",
+                permissionState: "granted",
+                metadata: ["fixture": .bool(true)]
+            )
+        )
+
+        let event = try sampler.sampleActiveMediaApp()?.toNativeCaptureEvent(sessionId: "session_1")
+
+        try expect(event?.source?.sourceType == "system_audio", "Media source should be system_audio")
+        try expect(event?.artifacts.first?.artifactType == "system_audio_metadata", "Media metadata should become system_audio_metadata")
+        try expect(event?.artifacts.first?.timestampStart == 42, "Media timestamp should be preserved")
     }
 }
 
