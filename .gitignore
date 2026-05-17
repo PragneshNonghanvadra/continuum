@@ -9,6 +9,7 @@ memory-vault
 .continuum-test-*
 apps/desktop/src-tauri/target
 apps/desktop/src-tauri/gen
+apps/desktop/src-tauri/binaries/continuum-native-capture-*
 apps/native-helper/.build
 *.sqlite
 *.sqlite-shm

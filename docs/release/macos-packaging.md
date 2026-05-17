@@ -20,20 +20,27 @@ Continuum ships as a macOS-first Tauri desktop app with three local companions:
    ```bash
    bun run build
    ```
-4. Build the Tauri bundle on a machine with Rust/Cargo installed:
+4. Build the Tauri `.app` bundle and simple install DMG:
    ```bash
-   bun run --cwd apps/desktop tauri build
+   bun run package:mac
    ```
+
+The script prepends `$HOME/.cargo/bin` when available so Apple Silicon rustup builds produce an arm64 Tauri binary. It creates:
+
+- `apps/desktop/src-tauri/target/release/bundle/macos/Continuum.app`
+- `apps/desktop/src-tauri/target/release/bundle/dmg/Continuum_0.1.0_aarch64.dmg`
 
 ## Native Helper
 
-The Swift helper currently builds as:
+The Swift helper builds as:
 
 ```bash
 swift build --package-path apps/native-helper
 ```
 
-The debug binary lands under `apps/native-helper/.build/.../continuum-native-capture`. Packaged builds should either bundle that binary in the app resources or set:
+Packaged builds run `scripts/build-tauri-sidecars.sh` before the Tauri frontend build. That script compiles the helper in release mode and copies it into `apps/desktop/src-tauri/binaries/continuum-native-capture-{target-triple}` so Tauri bundles it as `Continuum.app/Contents/MacOS/continuum-native-capture`.
+
+For local development, you can still override the helper path with:
 
 ```bash
 CONTINUUM_NATIVE_HELPER_PATH=/path/to/continuum-native-capture

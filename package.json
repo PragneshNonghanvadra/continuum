@@ -11,6 +11,7 @@
     "dev:ai-bridge": "bun run --cwd apps/codex-ai-bridge dev",
     "dev:desktop": "bun run --cwd apps/desktop dev",
     "build": "bun run --cwd packages/core build && bun run --cwd apps/local-api build && bun run --cwd apps/codex-ai-bridge build && bun run native:build && bun run --cwd apps/chrome-extension build && bun run --cwd apps/desktop build",
+    "package:mac": "bash scripts/package-macos.sh",
     "native:build": "swift build --package-path apps/native-helper",
     "native:test": "swift run --package-path apps/native-helper continuum-native-capture-model-tests",
     "test": "bun test apps/chrome-extension/src apps/codex-ai-bridge/src apps/desktop/src apps/local-api/src packages/core/src",

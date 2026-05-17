@@ -5,7 +5,7 @@
   "identifier": "dev.continuum.desktop",
   "build": {
     "beforeDevCommand": "bun run dev",
-    "beforeBuildCommand": "bun run build",
+    "beforeBuildCommand": "bash ../../scripts/build-tauri-sidecars.sh && bun run build",
     "devUrl": "http://127.0.0.1:5173",
     "frontendDist": "../dist"
   },
@@ -26,7 +26,12 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": [
+      "app"
+    ],
+    "externalBin": [
+      "binaries/continuum-native-capture"
+    ],
     "icon": []
   }
 }
