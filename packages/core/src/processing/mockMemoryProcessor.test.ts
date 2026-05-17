@@ -38,6 +38,38 @@ test("mock processor extracts deterministic memory drafts and reader markdown", 
   expect(result.revisionItems.some((item) => item.question.includes("LCP"))).toBe(true);
 });
 
+test("mock processor renders media timeline evidence in reader markdown", async () => {
+  const processor = new MockMemoryProcessor();
+
+  const result = await processor.process({
+    artifacts: [
+      {
+        artifactType: "video_caption",
+        content: "Hydration cost matters for perceived performance.",
+        createdAt: "2026-05-16T00:00:00.000Z",
+        id: "artifact_caption",
+        sessionId: "session_1",
+        timestampEnd: 52,
+        timestampStart: 45
+      },
+      {
+        artifactType: "system_audio_metadata",
+        createdAt: "2026-05-16T00:00:01.000Z",
+        id: "artifact_media",
+        metadata: { title: "Frontend lecture" },
+        sessionId: "session_1",
+        timestampStart: 42
+      }
+    ],
+    existingMemories: [],
+    session: { ...session, mode: "video", title: "Frontend lecture" }
+  });
+
+  expect(result.readerPage.contentMarkdown).toContain("## Media Timeline");
+  expect(result.readerPage.contentMarkdown).toContain("00:45-00:52");
+  expect(result.readerPage.contentMarkdown).toContain("Hydration cost matters");
+});
+
 test("mock processor suggests explainable links using keyword overlap", async () => {
   const processor = new MockMemoryProcessor();
   const links = await processor.suggestLinks(

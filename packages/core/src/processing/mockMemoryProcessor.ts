@@ -95,6 +95,7 @@ export class MockMemoryProcessor implements MemoryProcessor {
     const memories = await this.extractMemories(input);
     const summary = summarize(text);
     const sourceLines = input.artifacts.map((artifact) => `- ${artifact.artifactType} captured at ${artifact.createdAt}`).join("\n");
+    const mediaTimelineLines = buildMediaTimeline(input.artifacts);
     const memoryLines = memories.map((memory) => `- **${memory.title}**: ${memory.summary}`).join("\n");
 
     return {
@@ -113,6 +114,7 @@ export class MockMemoryProcessor implements MemoryProcessor {
         "",
         sourceLines || "- No artifacts captured.",
         "",
+        ...(mediaTimelineLines.length > 0 ? ["## Media Timeline", "", ...mediaTimelineLines, ""] : []),
         "## Related Memories",
         "",
         "Related memories are suggested after drafts are compared with approved memory cards."
@@ -161,6 +163,38 @@ export class MockMemoryProcessor implements MemoryProcessor {
         targetMemoryId: match.candidate.id
       }));
   }
+}
+
+function buildMediaTimeline(artifacts: ProcessInput["artifacts"]) {
+  return artifacts
+    .filter((artifact) =>
+      ["audio_metadata", "system_audio_metadata", "video_caption", "video_metadata"].includes(artifact.artifactType)
+    )
+    .map((artifact) => {
+      const time = formatTimeRange(artifact.timestampStart, artifact.timestampEnd);
+      const label = artifact.content ?? mediaLabelFromMetadata(artifact.metadata) ?? artifact.artifactType;
+      return `- ${time ? `${time} ` : ""}${artifact.artifactType}: ${label}`;
+    });
+}
+
+function mediaLabelFromMetadata(metadata: Record<string, unknown> | undefined) {
+  if (!metadata) return undefined;
+  const title = metadata.title ?? metadata.trackTitle;
+  if (typeof title === "string") return title;
+  return JSON.stringify(metadata);
+}
+
+function formatTimeRange(start: number | undefined, end: number | undefined) {
+  if (typeof start !== "number" && typeof end !== "number") return "";
+  if (typeof start === "number" && typeof end === "number") return `${formatTimestamp(start)}-${formatTimestamp(end)}`;
+  return formatTimestamp(start ?? end ?? 0);
+}
+
+function formatTimestamp(seconds: number) {
+  const wholeSeconds = Math.max(0, Math.floor(seconds));
+  const minutes = Math.floor(wholeSeconds / 60);
+  const remainingSeconds = wholeSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
 }
 
 function combineArtifactText(input: ProcessInput) {
