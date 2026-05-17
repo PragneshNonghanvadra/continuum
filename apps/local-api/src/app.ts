@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import {
   CONTINUUM_PRODUCT_NAME,
-  askMemory,
+  askMemoryWithAi,
   createArtifact,
   createAiProviderFromEnv,
   createCaptureSource,
@@ -41,20 +41,25 @@ import {
   type CaptureSourceType,
   type CaptureStatus,
   type CreateCaptureSourceInput,
-  type CreateArtifactInput
+  type CreateArtifactInput,
+  type AiGenerationProvider
 } from "@continuum/core";
 import { jsonError, readJsonBody } from "./http";
 
 export type ApiAppOptions = {
   db: Database;
   runtime?: {
+    aiProvider?: AiGenerationProvider;
     autoExport?: boolean;
     exportDir?: string;
+    requireAiProvider?: boolean;
   };
 };
 
 export function createApiApp({ db, runtime = {} }: ApiAppOptions) {
   const app = new Hono();
+  const aiProvider = runtime.aiProvider ?? createAiProviderFromEnv();
+  const requireAiProvider = runtime.requireAiProvider ?? parseBoolean(process.env.CONTINUUM_AI_REQUIRE_PROVIDER);
 
   app.use(
     "/api/*",
@@ -307,7 +312,16 @@ export function createApiApp({ db, runtime = {} }: ApiAppOptions) {
     if (!body.question) {
       return jsonError(context, 400, "Question is required");
     }
-    return context.json(askMemory(db, body.question));
+    try {
+      return context.json(
+        await askMemoryWithAi(db, body.question, {
+          provider: aiProvider,
+          requireProvider: requireAiProvider
+        })
+      );
+    } catch (error) {
+      return jsonError(context, 500, error instanceof Error ? error.message : "Ask Memory failed");
+    }
   });
 
   app.get("/api/revision-items", (context) => context.json({ revisionItems: listRevisionItems(db) }));
@@ -334,7 +348,8 @@ export function createApiApp({ db, runtime = {} }: ApiAppOptions) {
 
   app.get("/api/settings/ai", (context) =>
     context.json({
-      provider: createAiProviderFromEnv().describe()
+      health: buildAiHealth(aiProvider, requireAiProvider),
+      provider: aiProvider.describe()
     })
   );
 
@@ -401,6 +416,21 @@ export function createApiApp({ db, runtime = {} }: ApiAppOptions) {
   });
 
   return app;
+}
+
+function buildAiHealth(provider: AiGenerationProvider, strictMode: boolean) {
+  const description = provider.describe();
+  return {
+    checkedAt: new Date().toISOString(),
+    providerId: description.id,
+    ready: provider.isConfigured(),
+    strictMode
+  };
+}
+
+function parseBoolean(value: string | undefined) {
+  if (!value) return false;
+  return ["1", "true", "yes", "on"].includes(value.toLowerCase());
 }
 
 function buildCaptureDiagnostics(session: CaptureSession, artifacts: CaptureArtifact[]) {

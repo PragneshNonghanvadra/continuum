@@ -1,5 +1,6 @@
 export { CONTINUUM_PRODUCT_NAME } from "./metadata";
 export type { AiProviderDescription } from "./ai/provider";
+import type { AiProviderDescription } from "./ai/provider";
 export { artifactTypes, captureModes, captureStatuses } from "./domain";
 export type {
   ArtifactType,
@@ -36,5 +37,7 @@ export type SearchResult = {
 
 export type AskMemoryAnswer = {
   answer: string;
+  mode: "ai" | "retrieval";
+  provider?: AiProviderDescription;
   sources: SearchResult[];
 };

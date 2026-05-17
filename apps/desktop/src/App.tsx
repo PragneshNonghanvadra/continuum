@@ -34,6 +34,7 @@ import {
   summarizeArtifactTypes,
   type CaptureDiagnostics
 } from "./captureDiagnostics";
+import { formatAiSettingsSummary, formatAiStatus } from "./aiStatus";
 import { navigationItems, type NavigationItem } from "./navigation";
 
 const emptySnapshot: AppSnapshot = { captureCapabilities: [], links: [], memories: [], readerPages: [], revisionItems: [], sessions: [] };
@@ -55,6 +56,7 @@ export function App() {
   const activeSession = snapshot.sessions.find((session) => session.status === "active" || session.status === "paused");
   const processingCount = snapshot.sessions.filter((session) => session.status === "processing").length;
   const suggestedCount = snapshot.memories.filter((memory) => memory.status === "suggested").length;
+  const aiLabel = formatAiStatus(snapshot.aiProvider, snapshot.aiHealth);
 
   return (
     <main className="app-shell">
@@ -87,14 +89,15 @@ export function App() {
             <h1>{activeLabel}</h1>
           </div>
           <div className="header-status-grid">
-            <StatusTile label="AI" value={snapshot.aiProvider?.configured ? snapshot.aiProvider.label : "Mock fallback"} />
+            <StatusTile label="AI" value={aiLabel} />
             <StatusTile label="Capture" value={activeSession ? activeSession.status : `${processingCount} ready`} />
             <StatusTile label="Review" value={`${suggestedCount} suggested`} />
           </div>
         </header>
         {snapshot.error ? <div className="notice">{snapshot.error}</div> : null}
         <View
-          aiLabel={snapshot.aiProvider?.configured ? snapshot.aiProvider.label : "Mock fallback"}
+          aiLabel={aiLabel}
+          aiSettingsSummary={formatAiSettingsSummary(snapshot.aiProvider, snapshot.aiHealth)}
           captureCapabilities={snapshot.captureCapabilities}
           links={snapshot.links}
           memories={snapshot.memories}
@@ -117,6 +120,7 @@ export function App() {
 
 function View({
   aiLabel,
+  aiSettingsSummary,
   captureCapabilities,
   refresh,
   links,
@@ -127,6 +131,7 @@ function View({
   view
 }: {
   aiLabel: string;
+  aiSettingsSummary: string;
   captureCapabilities: CaptureCapability[];
   links: MemoryLink[];
   memories: MemoryCard[];
@@ -169,7 +174,7 @@ function View({
   }
 
   if (view === "settings") {
-    return <SettingsView aiLabel={aiLabel} />;
+    return <SettingsView aiLabel={aiLabel} aiSettingsSummary={aiSettingsSummary} />;
   }
 
   return (
@@ -799,6 +804,10 @@ function AskMemoryView() {
       {error ? <div className="notice">{error}</div> : null}
       {answer ? (
         <section className="answer-panel">
+          <div className="memory-card__meta">
+            <span>{answer.mode === "ai" ? "AI synthesis" : "retrieval synthesis"}</span>
+            {answer.provider ? <span>{answer.provider.label}</span> : null}
+          </div>
           <h2>Answer</h2>
           <p>{answer.answer}</p>
           <h2>Sources</h2>
@@ -889,7 +898,7 @@ function RevisionView({ refresh, revisionItems }: { refresh: () => Promise<void>
   );
 }
 
-function SettingsView({ aiLabel }: { aiLabel: string }) {
+function SettingsView({ aiLabel, aiSettingsSummary }: { aiLabel: string; aiSettingsSummary: string }) {
   const [exportDir, setExportDir] = useState("");
   const [exportResult, setExportResult] = useState<string | undefined>();
   const [error, setError] = useState<string | undefined>();
@@ -931,7 +940,9 @@ function SettingsView({ aiLabel }: { aiLabel: string }) {
           </div>
           <div>
             <dt>AI provider</dt>
-            <dd>{aiLabel}</dd>
+            <dd>
+              {aiLabel}. {aiSettingsSummary}
+            </dd>
           </div>
           <div>
             <dt>Obsidian graph</dt>

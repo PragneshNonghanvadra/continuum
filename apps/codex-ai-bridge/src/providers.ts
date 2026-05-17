@@ -4,10 +4,16 @@ export type BridgeGenerationRequest = AiGenerationRequest & {
   model?: string;
 };
 
+export type AskMemoryAnswerDraft = {
+  answer: string;
+};
+
+export type BridgeGenerationOutput = AskMemoryAnswerDraft | ProcessSessionResult;
+
 export interface BridgeProvider {
   readonly id: string;
   isConfigured(): boolean;
-  generate(request: BridgeGenerationRequest): Promise<ProcessSessionResult>;
+  generate(request: BridgeGenerationRequest): Promise<BridgeGenerationOutput>;
 }
 
 export type HttpBridgeProviderOptions = {
@@ -26,6 +32,11 @@ export class FixtureBridgeProvider implements BridgeProvider {
   }
 
   async generate(request: BridgeGenerationRequest) {
+    if (request.task === "ask_memory") {
+      return {
+        answer: buildFixtureAskAnswer(request.input)
+      };
+    }
     return this.processor.process(request.input as ProcessInput);
   }
 }
@@ -74,8 +85,8 @@ export class HttpBridgeProvider implements BridgeProvider {
 
     const payload = await response.json();
     const output = payload && typeof payload === "object" && "output" in payload ? payload.output : payload;
-    if (!isProcessSessionResult(output)) {
-      throw new BridgeProviderError("Codex bridge upstream returned an invalid ProcessSessionResult.", 502);
+    if (!isValidOutputForSchema(request.schemaName, output)) {
+      throw new BridgeProviderError(`Codex bridge upstream returned an invalid ${request.schemaName}.`, 502);
     }
     return output;
   }
@@ -115,4 +126,30 @@ function isProcessSessionResult(value: unknown): value is ProcessSessionResult {
     Array.isArray(candidate.entities) &&
     Boolean(candidate.readerPage && typeof candidate.readerPage === "object")
   );
+}
+
+function isAskMemoryAnswerDraft(value: unknown): value is AskMemoryAnswerDraft {
+  if (!value || typeof value !== "object") return false;
+  return typeof (value as Partial<AskMemoryAnswerDraft>).answer === "string";
+}
+
+function isValidOutputForSchema(schemaName: string, output: unknown) {
+  if (schemaName === "ProcessSessionResult") return isProcessSessionResult(output);
+  if (schemaName === "AskMemoryAnswerDraft") return isAskMemoryAnswerDraft(output);
+  return false;
+}
+
+function buildFixtureAskAnswer(input: unknown) {
+  if (!input || typeof input !== "object") {
+    return "I could not find local sources that support an answer.";
+  }
+  const sources = (input as { sources?: Array<{ summary?: string; snippet?: string; title?: string }> }).sources ?? [];
+  if (sources.length === 0) {
+    return "I could not find local sources that support an answer.";
+  }
+  const sourceText = sources
+    .map((source) => source.summary || source.snippet || source.title)
+    .filter(Boolean)
+    .join(" ");
+  return `Based on the provided Continuum sources: ${sourceText}`;
 }

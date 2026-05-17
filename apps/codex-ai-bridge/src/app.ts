@@ -67,7 +67,13 @@ async function readJson(request: { json: () => Promise<unknown> }) {
 
 function isSupportedProcessRequest(value: unknown): value is BridgeGenerationRequest {
   if (!isAiGenerationRequest(value)) return false;
-  return value.task === "process_session" && value.schemaName === "ProcessSessionResult" && isProcessInput(value.input);
+  if (value.task === "process_session") {
+    return value.schemaName === "ProcessSessionResult" && isProcessInput(value.input);
+  }
+  if (value.task === "ask_memory") {
+    return value.schemaName === "AskMemoryAnswerDraft" && isAskMemoryInput(value.input);
+  }
+  return false;
 }
 
 function isAiGenerationRequest(value: unknown): value is AiGenerationRequest {
@@ -97,4 +103,10 @@ function isProcessInput(value: unknown) {
     typeof session.title === "string" &&
     typeof session.mode === "string"
   );
+}
+
+function isAskMemoryInput(value: unknown) {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as { question?: unknown; sources?: unknown };
+  return typeof candidate.question === "string" && Array.isArray(candidate.sources);
 }

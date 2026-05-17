@@ -12,6 +12,7 @@ import type {
   AskMemoryAnswer,
   RevisionItem
 } from "@continuum/core/browser";
+import type { AiProviderHealth } from "./aiStatus";
 import type { CaptureDiagnostics } from "./captureDiagnostics";
 
 const API_BASE_URL = "http://127.0.0.1:5174/api";
@@ -24,6 +25,7 @@ export type AppSnapshot = {
   revisionItems: RevisionItem[];
   sessions: CaptureSession[];
   aiProvider?: AiProviderDescription;
+  aiHealth?: AiProviderHealth;
   captureCapabilities: CaptureCapability[];
   error?: string;
 };
@@ -83,11 +85,12 @@ export async function fetchAppSnapshot(): Promise<AppSnapshot> {
     const linksPayload = (await linksResponse.json()) as { links: MemoryLink[] };
     const readerPagesPayload = (await readerPagesResponse.json()) as { readerPages: ReaderPage[] };
     const revisionPayload = (await revisionResponse.json()) as { revisionItems: RevisionItem[] };
-    const aiSettingsPayload = (await aiSettingsResponse.json()) as { provider: AiProviderDescription };
+    const aiSettingsPayload = (await aiSettingsResponse.json()) as { health: AiProviderHealth; provider: AiProviderDescription };
     const captureCapabilitiesPayload = (await captureCapabilitiesResponse.json()) as { capabilities: CaptureCapability[] };
 
     return {
       aiProvider: aiSettingsPayload.provider,
+      aiHealth: aiSettingsPayload.health,
       captureCapabilities: captureCapabilitiesPayload.capabilities,
       health,
       links: linksPayload.links,
@@ -215,7 +218,8 @@ export async function askMemoryRequest(question: string): Promise<AskMemoryAnswe
     method: "POST"
   });
   if (!response.ok) {
-    throw new Error("Unable to ask memory");
+    const payload = await response.json().catch(() => undefined);
+    throw new Error(payload?.error ?? "Unable to ask memory");
   }
   return (await response.json()) as AskMemoryAnswer;
 }

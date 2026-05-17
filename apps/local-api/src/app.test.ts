@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { createMemoryDatabase } from "@continuum/core";
+import { createMemoryDatabase, type AiGenerationProvider, type AiGenerationRequest, type AiProviderDescription } from "@continuum/core";
 import { createApiApp } from "./app";
 
 test("session API creates, lists, patches, and soft-deletes sessions", async () => {
@@ -318,6 +318,40 @@ test("search and ask-memory API return source-backed retrieval results", async (
   expect(askPayload.answer).toContain("Based on");
 });
 
+test("ask-memory API can synthesize with configured AI provider", async () => {
+  const provider = new ApiAskProvider();
+  const app = createApiApp({
+    db: createMemoryDatabase(),
+    runtime: {
+      aiProvider: provider
+    }
+  });
+  const sessionResponse = await app.request("/api/sessions", {
+    body: JSON.stringify({ mode: "article", title: "AI Ask session" }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  const { session } = await sessionResponse.json();
+  await app.request(`/api/sessions/${session.id}/artifacts`, {
+    body: JSON.stringify({ artifactType: "article_text", content: "AI Ask Memory should cite local evidence before synthesis." }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  await app.request(`/api/sessions/${session.id}/process`, { method: "POST" });
+
+  const askPayload = await (
+    await app.request("/api/ask-memory", {
+      body: JSON.stringify({ question: "How should Ask Memory behave?" }),
+      headers: { "content-type": "application/json" },
+      method: "POST"
+    })
+  ).json();
+
+  expect(askPayload.mode).toBe("ai");
+  expect(askPayload.answer).toContain("API AI synthesis");
+  expect(provider.lastRequest?.task).toBe("ask_memory");
+});
+
 test("revision API lists generated questions and updates review status", async () => {
   const app = createApiApp({ db: createMemoryDatabase() });
   const sessionResponse = await app.request("/api/sessions", {
@@ -390,7 +424,24 @@ test("AI settings API exposes provider mode without secrets", async () => {
   const payload = await (await app.request("/api/settings/ai")).json();
 
   expect(payload.provider.kind).toBe("mock");
+  expect(payload.health.ready).toBe(false);
+  expect(payload.health.strictMode).toBe(false);
   expect(payload.provider).not.toHaveProperty("apiKey");
+});
+
+test("AI settings API reports strict provider health", async () => {
+  const app = createApiApp({
+    db: createMemoryDatabase(),
+    runtime: {
+      aiProvider: new ApiAskProvider(),
+      requireAiProvider: true
+    }
+  });
+  const payload = await (await app.request("/api/settings/ai")).json();
+
+  expect(payload.health.ready).toBe(true);
+  expect(payload.health.strictMode).toBe(true);
+  expect(payload.health.providerId).toBe("api-test-ai");
 });
 
 test("capture capabilities API includes browser and native capture surfaces", async () => {
@@ -441,3 +492,32 @@ test("native capture API ingests non-browser artifacts into the active session",
   const sourcesPayload = await (await app.request(`/api/sessions/${session.id}/sources`)).json();
   expect(sourcesPayload.sources[0].appName).toBe("Preview");
 });
+
+class ApiAskProvider implements AiGenerationProvider {
+  readonly id = "api-test-ai";
+  readonly kind = "codex_app_server";
+  lastRequest?: AiGenerationRequest;
+
+  describe(): AiProviderDescription {
+    return {
+      configured: true,
+      endpoint: "http://127.0.0.1:4010/continuum/process",
+      id: this.id,
+      kind: this.kind,
+      label: "API Test AI",
+      model: "test-model"
+    };
+  }
+
+  isConfigured() {
+    return true;
+  }
+
+  async generateJson<T>(request: AiGenerationRequest): Promise<T> {
+    this.lastRequest = request;
+    if (request.task === "ask_memory") {
+      return { answer: "API AI synthesis from local Continuum evidence." } as T;
+    }
+    throw new Error(`Unsupported task ${request.task}`);
+  }
+}

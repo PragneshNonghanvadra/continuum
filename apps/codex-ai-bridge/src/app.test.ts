@@ -75,4 +75,37 @@ describe("codex AI bridge app", () => {
 
     expect(response.status).toBe(400);
   });
+
+  it("answers Ask Memory requests from provided sources", async () => {
+    const app = createBridgeApp({ provider: "fixture" });
+
+    const response = await app.request("/continuum/process", {
+      body: JSON.stringify({
+        input: {
+          question: "What did I learn about Continuum?",
+          sources: [
+            {
+              recordId: "memory_1",
+              recordType: "memory",
+              snippet: "Continuum captures explicit sessions and exports an Obsidian graph.",
+              sourceType: "memory_card",
+              status: "approved",
+              summary: "Explicit capture should become linked memory and Obsidian graph output.",
+              title: "Continuum explicit capture"
+            }
+          ]
+        },
+        prompt: "Answer from local sources only.",
+        schemaName: "AskMemoryAnswerDraft",
+        task: "ask_memory"
+      }),
+      headers: { "content-type": "application/json" },
+      method: "POST"
+    });
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.output.answer).toContain("Explicit capture");
+    expect(payload.output.answer).toContain("Obsidian graph");
+  });
 });
