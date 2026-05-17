@@ -35,6 +35,12 @@ import {
   type CaptureDiagnostics
 } from "./captureDiagnostics";
 import { formatAiSettingsSummary, formatAiStatus } from "./aiStatus";
+import {
+  nativeCaptureStatusRequest,
+  startNativeCaptureRequest,
+  stopNativeCaptureRequest,
+  type NativeCaptureResult
+} from "./nativeCaptureBridge";
 import { navigationItems, type NavigationItem } from "./navigation";
 
 const emptySnapshot: AppSnapshot = { captureCapabilities: [], links: [], memories: [], readerPages: [], revisionItems: [], sessions: [] };
@@ -248,9 +254,14 @@ function CaptureView({
     title: ""
   });
   const [importantNote, setImportantNote] = useState("");
+  const [nativeCapture, setNativeCapture] = useState<NativeCaptureResult | undefined>();
   const [actionError, setActionError] = useState<string | undefined>();
   const [actionMessage, setActionMessage] = useState<string | undefined>();
   const [isWorking, setIsWorking] = useState(false);
+
+  useEffect(() => {
+    nativeCaptureStatusRequest().then(setNativeCapture);
+  }, []);
 
   useEffect(() => {
     if (!captureSession) {
@@ -320,6 +331,8 @@ function CaptureView({
               disabled={isWorking}
               onClick={() =>
                 runAction(async () => {
+                  const nativeResult = await stopNativeCaptureRequest();
+                  setNativeCapture(nativeResult);
                   await updateSessionRequest(activeSession.id, { endedAt: new Date().toISOString(), status: "processing" });
                   const result = await processSessionRequest(activeSession.id);
                   setActionMessage(
@@ -333,6 +346,7 @@ function CaptureView({
             </button>
           </div>
         </Panel>
+        <NativeCaptureStatusPanel nativeCapture={nativeCapture} />
         <CaptureEvidencePanel diagnostics={diagnostics} />
         <CaptureSourcesPanel capabilities={captureCapabilities} />
         <Panel title="Mark Moment">
@@ -393,7 +407,12 @@ function CaptureView({
               </button>
               <button
                 className="secondary-button"
-                onClick={() => runAction(() => updateSessionRequest(processingSession.id, { status: "active" }).then())}
+                onClick={() =>
+                  runAction(async () => {
+                    await updateSessionRequest(processingSession.id, { status: "active" });
+                    setNativeCapture(await startNativeCaptureRequest(processingSession.id));
+                  })
+                }
                 type="button"
               >
                 Resume Capture
@@ -401,6 +420,7 @@ function CaptureView({
             </div>
           </div>
         </Panel>
+        <NativeCaptureStatusPanel nativeCapture={nativeCapture} />
         <CaptureEvidencePanel diagnostics={diagnostics} />
         <CaptureSourcesPanel capabilities={captureCapabilities} />
         {actionMessage ? <div className="notice notice--success">{actionMessage}</div> : null}
@@ -417,12 +437,13 @@ function CaptureView({
           onSubmit={(event) => {
             event.preventDefault();
             runAction(async () => {
-              await createSessionRequest({
+              const session = await createSessionRequest({
                 mode: form.mode,
                 sourceTitle: form.sourceTitle.trim() || undefined,
                 sourceUrl: form.sourceUrl.trim() || undefined,
                 title: form.title.trim()
               });
+              setNativeCapture(await startNativeCaptureRequest(session.id));
               setForm({ mode: "article", sourceTitle: "", sourceUrl: "", title: "" });
             });
           }}
@@ -470,6 +491,7 @@ function CaptureView({
           </button>
         </form>
       </Panel>
+      <NativeCaptureStatusPanel nativeCapture={nativeCapture} />
       <CaptureSourcesPanel capabilities={captureCapabilities} />
       {actionError ? <div className="notice">{actionError}</div> : null}
     </div>
@@ -505,6 +527,20 @@ function CaptureEvidencePanel({ diagnostics }: { diagnostics?: CaptureDiagnostic
           ))}
         </ul>
       ) : null}
+    </Panel>
+  );
+}
+
+function NativeCaptureStatusPanel({ nativeCapture }: { nativeCapture?: NativeCaptureResult }) {
+  const available = nativeCapture?.available;
+  return (
+    <Panel title="Native Capture Helper">
+      <div className="evidence-summary">
+        <span>{available ? "Tauri bridge available" : "Web shell mode"}</span>
+        <strong>{available && nativeCapture.status.running ? "Running" : "Idle"}</strong>
+        <span>{available ? nativeCapture.status.sessionId ?? "No active native session" : nativeCapture?.reason ?? "Checking helper status"}</span>
+      </div>
+      {available && nativeCapture.status.helperPath ? <p className="source-line">Helper: {nativeCapture.status.helperPath}</p> : null}
     </Panel>
   );
 }

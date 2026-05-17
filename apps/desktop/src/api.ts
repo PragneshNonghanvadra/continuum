@@ -15,7 +15,7 @@ import type {
 import type { AiProviderHealth } from "./aiStatus";
 import type { CaptureDiagnostics } from "./captureDiagnostics";
 
-const API_BASE_URL = "http://127.0.0.1:5174/api";
+export const API_BASE_URL = "http://127.0.0.1:5174/api";
 
 export type AppSnapshot = {
   health?: ApiHealth;
