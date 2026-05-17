@@ -15,7 +15,8 @@
     "native:test": "swift run --package-path apps/native-helper continuum-native-capture-model-tests",
     "test": "bun test apps/chrome-extension/src apps/codex-ai-bridge/src apps/desktop/src apps/local-api/src packages/core/src",
     "typecheck": "tsc -p packages/core/tsconfig.json --noEmit && tsc -p apps/local-api/tsconfig.json --noEmit && tsc -p apps/codex-ai-bridge/tsconfig.json --noEmit && tsc -p apps/chrome-extension/tsconfig.json --noEmit && tsc -p apps/desktop/tsconfig.json --noEmit",
-    "lint": "bun run typecheck"
+    "lint": "bun run typecheck",
+    "verify": "bash scripts/verify.sh"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.0.0",
