@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { createBridgeApp } from "./app";
+import { OpenAiResponsesBridgeProvider } from "./providers";
 
 const now = "2026-05-17T00:00:00.000Z";
 
@@ -107,5 +108,63 @@ describe("codex AI bridge app", () => {
     expect(response.status).toBe(200);
     expect(payload.output.answer).toContain("Explicit capture");
     expect(payload.output.answer).toContain("Obsidian graph");
+  });
+
+  it("can call an OpenAI Responses-compatible upstream", async () => {
+    let capturedBody: Record<string, unknown> | undefined;
+    let capturedHeaders: Headers | undefined;
+    let capturedUrl = "";
+    const provider = new OpenAiResponsesBridgeProvider({
+      apiKey: "test-key",
+      fetcher: async (input, init) => {
+        capturedUrl = String(input);
+        capturedHeaders = new Headers(init?.headers);
+        capturedBody = JSON.parse(String(init?.body));
+        return Response.json({
+          output_text: JSON.stringify({
+            entities: [],
+            links: [],
+            memories: [
+              {
+                category: "project",
+                confidence: 0.94,
+                evidence: { artifactIds: ["artifact_1"] },
+                fullText: "AI should synthesize capture evidence into memory.",
+                importance: 4,
+                memoryType: "insight",
+                summary: "AI synthesizes capture evidence.",
+                title: "AI synthesizes capture evidence"
+              }
+            ],
+            readerPage: {
+              contentMarkdown: "# AI reader",
+              pageType: "session",
+              slug: "ai-reader",
+              summary: "AI reader",
+              title: "AI reader"
+            },
+            revisionItems: [],
+            summary: "AI summary",
+            tags: ["ai"]
+          })
+        });
+      },
+      model: "gpt-test"
+    });
+    const app = createBridgeApp({ provider });
+
+    const response = await app.request("/continuum/process", {
+      body: JSON.stringify(processRequest),
+      headers: { "content-type": "application/json" },
+      method: "POST"
+    });
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(capturedUrl).toBe("https://api.openai.com/v1/responses");
+    expect(capturedHeaders?.get("authorization")).toBe("Bearer test-key");
+    expect(capturedBody?.model).toBe("continuum-bridge-fixture");
+    expect((capturedBody?.text as { format: { type: string } }).format.type).toBe("json_object");
+    expect(payload.output.summary).toBe("AI summary");
   });
 });

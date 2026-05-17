@@ -53,11 +53,12 @@ Load `apps/chrome-extension/dist-extension` as an unpacked extension. It capture
 
 ## AI Bridge
 
-For strict AI-first testing, run the bridge and point Continuum at it:
+For strict AI-first testing with a frontier OpenAI model, run the bridge and point Continuum at it:
 
 ```bash
-CONTINUUM_CODEX_BRIDGE_PROVIDER=http \
-CONTINUUM_CODEX_BRIDGE_UPSTREAM_URL=http://127.0.0.1:4010/continuum/process \
+OPENAI_API_KEY=... \
+CONTINUUM_CODEX_BRIDGE_PROVIDER=openai_responses \
+CONTINUUM_CODEX_BRIDGE_MODEL=your-model-name \
 bun run dev:ai-bridge
 ```
 
@@ -71,4 +72,4 @@ CONTINUUM_AI_REQUIRE_PROVIDER=true \
 bun run dev:api
 ```
 
-The bridge fixture provider is for automated tests only.
+The bridge also supports `CONTINUUM_CODEX_BRIDGE_PROVIDER=http` for a local model server that already accepts Continuum's `{ task, schemaName, prompt, input }` contract. The bridge fixture provider is for automated tests only.
