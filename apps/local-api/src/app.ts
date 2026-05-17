@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import {
   CONTINUUM_PRODUCT_NAME,
+  AiMemoryProcessor,
   askMemoryWithAi,
   createArtifact,
   createAiProviderFromEnv,
@@ -334,11 +335,15 @@ export function createApiApp({ db, runtime = {} }: ApiAppOptions) {
     try {
       const result = await processCapturedSession(db, context.req.param("id"), {
         autoExport: runtime.autoExport,
-        exportDir: runtime.exportDir
+        exportDir: runtime.exportDir,
+        processor: new AiMemoryProcessor(aiProvider, undefined, {
+          requireProvider: requireAiProvider
+        })
       });
       return context.json(result);
     } catch (error) {
-      return jsonError(context, 404, error instanceof Error ? error.message : "Unable to process session");
+      const message = error instanceof Error ? error.message : "Unable to process session";
+      return jsonError(context, statusForProcessError(message), message);
     }
   });
 
@@ -513,6 +518,14 @@ function buildAiHealth(provider: AiGenerationProvider, strictMode: boolean) {
 function parseBoolean(value: string | undefined) {
   if (!value) return false;
   return ["1", "true", "yes", "on"].includes(value.toLowerCase());
+}
+
+function statusForProcessError(message: string): 404 | 500 | 502 | 503 {
+  if (message === "Session not found") return 404;
+  if (message.includes("AI provider is required") || message.includes("not configured")) return 503;
+  if (message.includes("AI provider request failed with 503")) return 503;
+  if (message.includes("AI provider request failed") || message.includes("AI provider returned invalid")) return 502;
+  return 500;
 }
 
 function buildCaptureDiagnostics(session: CaptureSession, artifacts: CaptureArtifact[]) {

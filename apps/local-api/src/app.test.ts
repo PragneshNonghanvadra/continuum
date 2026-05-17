@@ -296,6 +296,36 @@ test("process session API converts captured artifacts into suggested memories", 
   expect((await memoriesResponse.json()).memories[0].status).toBe("suggested");
 });
 
+test("process session API reports AI provider outages as service unavailable", async () => {
+  const app = createApiApp({
+    db: createMemoryDatabase(),
+    runtime: {
+      aiProvider: new UnavailableProcessProvider(),
+      requireAiProvider: true
+    }
+  });
+  const sessionResponse = await app.request("/api/sessions", {
+    body: JSON.stringify({ mode: "article", title: "Strict AI process session" }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  const { session } = await sessionResponse.json();
+  await app.request(`/api/sessions/${session.id}/artifacts`, {
+    body: JSON.stringify({
+      artifactType: "article_text",
+      content: "Strict AI processing should surface provider outages with the right status code."
+    }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+
+  const processResponse = await app.request(`/api/sessions/${session.id}/process`, { method: "POST" });
+  const payload = await processResponse.json();
+
+  expect(processResponse.status).toBe(503);
+  expect(payload.error).toContain("AI provider request failed with 503");
+});
+
 test("memory review API edits, approves, rejects, and archives suggested cards", async () => {
   const app = createApiApp({ db: createMemoryDatabase() });
   const sessionResponse = await app.request("/api/sessions", {
@@ -616,5 +646,28 @@ class ApiAskProvider implements AiGenerationProvider {
       return { answer: "API AI synthesis from local Continuum evidence." } as T;
     }
     throw new Error(`Unsupported task ${request.task}`);
+  }
+}
+
+class UnavailableProcessProvider implements AiGenerationProvider {
+  readonly id = "unavailable-process-ai";
+  readonly kind = "codex_app_server";
+
+  describe(): AiProviderDescription {
+    return {
+      configured: true,
+      endpoint: "http://127.0.0.1:4010/continuum/process",
+      id: this.id,
+      kind: this.kind,
+      label: "Unavailable Process AI"
+    };
+  }
+
+  isConfigured() {
+    return true;
+  }
+
+  async generateJson<T>(_request: AiGenerationRequest): Promise<T> {
+    throw new Error("AI provider request failed with 503");
   }
 }

@@ -26,6 +26,12 @@
         "@continuum/core": "workspace:*",
       },
     },
+    "apps/codex-ai-bridge": {
+      "name": "@continuum/codex-ai-bridge",
+      "dependencies": {
+        "@continuum/core": "workspace:*",
+      },
+    },
     "apps/desktop": {
       "name": "@continuum/desktop",
       "dependencies": {
@@ -82,6 +88,8 @@
     "@babel/types": ["@babel/types@7.29.0", "", { "dependencies": { "@babel/helper-string-parser": "^7.27.1", "@babel/helper-validator-identifier": "^7.28.5" } }, "sha512-LwdZHpScM4Qz8Xw2iKSzS+cfglZzJGvofQICy7W7v4caru4EaAmyUuO6BGrbyQ2mYV11W0U8j5mBhd14dd3B0A=="],
 
     "@continuum/chrome-extension": ["@continuum/chrome-extension@workspace:apps/chrome-extension"],
+
+    "@continuum/codex-ai-bridge": ["@continuum/codex-ai-bridge@workspace:apps/codex-ai-bridge"],
 
     "@continuum/core": ["@continuum/core@workspace:packages/core"],
 

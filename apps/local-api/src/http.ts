@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 
-export function jsonError(context: Context, status: 400 | 401 | 404 | 500, message: string) {
+export function jsonError(context: Context, status: 400 | 401 | 404 | 500 | 502 | 503, message: string) {
   return context.json({ error: message }, status);
 }
 
