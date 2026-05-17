@@ -9,6 +9,7 @@ struct ContinuumNativeCaptureModelTests {
         try ocrResultMapsToDerivedArtifactWithoutRawRetention()
         try ocrPipelineDeletesTemporarySnapshotByDefault()
         try mediaSampleMapsToSystemAudioMetadata()
+        try captureLoopPostsAccessibilityAndMediaEvidence()
         print("ContinuumNativeCaptureModelTests passed")
     }
 
@@ -129,6 +130,24 @@ struct ContinuumNativeCaptureModelTests {
         try expect(event?.source?.sourceType == "system_audio", "Media source should be system_audio")
         try expect(event?.artifacts.first?.artifactType == "system_audio_metadata", "Media metadata should become system_audio_metadata")
         try expect(event?.artifacts.first?.timestampStart == 42, "Media timestamp should be preserved")
+    }
+
+    private static func captureLoopPostsAccessibilityAndMediaEvidence() throws {
+        let poster = CollectingNativeCapturePoster()
+        let loop = NativeCaptureLoop(
+            accessibility: FixtureAccessibilitySampler(
+                sample: AccessibilitySample(appName: "Preview", selectedText: "Native note", permissionState: "granted")
+            ),
+            media: FixtureMediaAppSampler(
+                sample: MediaPlaybackSample(appName: "Music", trackTitle: "Capture talk", currentTime: 10, permissionState: "granted")
+            ),
+            poster: poster
+        )
+
+        let posted = try loop.captureOnce(sessionId: "session_1")
+
+        try expect(posted == 2, "Capture loop should post accessibility and media evidence")
+        try expect(poster.events.allSatisfy { $0.sessionId == "session_1" }, "Capture loop should attach active session id")
     }
 }
 

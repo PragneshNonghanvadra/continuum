@@ -1,4 +1,5 @@
 use serde::Serialize;
+use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 
 #[derive(Default)]
@@ -9,6 +10,7 @@ pub struct NativeCaptureState {
 #[derive(Default)]
 struct NativeCaptureRuntime {
     status: NativeCaptureStatus,
+    child: Option<Child>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
@@ -40,16 +42,42 @@ impl NativeCaptureState {
         }
 
         let helper_path = std::env::var("CONTINUUM_NATIVE_HELPER_PATH").ok();
+        let mut last_error = None;
+        let child = if let Some(path) = helper_path.as_ref() {
+            match Command::new(path)
+                .arg("run")
+                .arg("--session-id")
+                .arg(&session_id)
+                .arg("--api-base-url")
+                .arg(&api_base_url)
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()
+            {
+                Ok(child) => Some(child),
+                Err(error) => {
+                    last_error = Some(format!("Unable to start native helper: {error}"));
+                    None
+                }
+            }
+        } else {
+            last_error = Some("CONTINUUM_NATIVE_HELPER_PATH is not configured".to_string());
+            None
+        };
         let status = NativeCaptureStatus {
             api_base_url: Some(api_base_url),
             helper_path,
-            last_error: None,
+            last_error,
             running: true,
             session_id: Some(session_id),
         };
-        self.runtime
+        let mut runtime = self
+            .runtime
             .lock()
-            .map_err(|_| "Native capture state is unavailable".to_string())?
+            .map_err(|_| "Native capture state is unavailable".to_string())?;
+        runtime.child = child;
+        runtime
             .status = status.clone();
         Ok(status)
     }
@@ -59,6 +87,10 @@ impl NativeCaptureState {
             .runtime
             .lock()
             .map_err(|_| "Native capture state is unavailable".to_string())?;
+        if let Some(mut child) = runtime.child.take() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
         runtime.status.running = false;
         runtime.status.session_id = None;
         Ok(runtime.status.clone())
