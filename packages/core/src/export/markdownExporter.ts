@@ -264,7 +264,7 @@ function buildTopicClusters(graph: KnowledgeGraph): TopicClusters {
       memories: graph.edges
         .filter((edge) => edge.source === topic.id && edge.relation === "topic_memory")
         .map((edge) => nodeById.get(edge.target))
-        .filter((node): node is NonNullable<typeof node> => Boolean(node) && node.type === "memory")
+        .filter((node): node is KnowledgeGraph["nodes"][number] => node !== undefined && node.type === "memory")
         .map((node) => ({ id: node.id, label: node.label }))
     }));
 

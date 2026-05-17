@@ -44,7 +44,8 @@ export class MockEmbeddingProvider implements EmbeddingProvider {
     for (const char of text.toLowerCase()) {
       const code = char.charCodeAt(0);
       if (code >= 97 && code <= 122) {
-        buckets[code % buckets.length] += 1;
+        const bucket = code % buckets.length;
+        buckets[bucket] = (buckets[bucket] ?? 0) + 1;
       }
     }
     return normalizeVector(buckets);

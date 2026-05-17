@@ -28,6 +28,8 @@ export type TranscriptionCommandRunner = (
   args: string[]
 ) => Promise<{ exitCode: number; stderr: string; stdout: string }>;
 
+export type TranscriptionFetch = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
+
 export class MockTranscriptionProvider implements TranscriptionProvider {
   readonly id = "mock-local";
 
@@ -81,14 +83,14 @@ export class LocalCommandTranscriptionProvider implements TranscriptionProvider 
 
 export type HttpTranscriptionProviderOptions = {
   apiKey?: string;
-  fetcher?: typeof fetch;
+  fetcher?: TranscriptionFetch;
   url: string;
 };
 
 export class HttpTranscriptionProvider implements TranscriptionProvider {
   readonly id = "http";
   private readonly apiKey?: string;
-  private readonly fetcher: typeof fetch;
+  private readonly fetcher: TranscriptionFetch;
   private readonly url: string;
 
   constructor(options: HttpTranscriptionProviderOptions) {
