@@ -22,6 +22,7 @@ test("migrations create memory and capture ingestion tables", () => {
   expect(tables).toContain("extension_pairings");
   expect(tables).toContain("capture_events");
   expect(tables).toContain("memory_fts");
+  expect(tables).toContain("memory_embeddings");
 });
 
 test("seed data loads the PRD example sessions", () => {

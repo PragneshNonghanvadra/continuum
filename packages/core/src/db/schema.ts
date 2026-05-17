@@ -204,6 +204,18 @@ export const keyframes = sqliteTable("keyframes", {
   createdAt: text("created_at").notNull()
 });
 
+export const memoryEmbeddings = sqliteTable("memory_embeddings", {
+  id: text("id").primaryKey(),
+  recordType: text("record_type").notNull(),
+  recordId: text("record_id").notNull(),
+  provider: text("provider").notNull(),
+  model: text("model").notNull(),
+  dimensions: integer("dimensions").notNull(),
+  vectorJson: text("vector_json").notNull(),
+  textHash: text("text_hash").notNull(),
+  createdAt: text("created_at").notNull()
+});
+
 export const importantMoments = sqliteTable("important_moments", {
   id: text("id").primaryKey(),
   sessionId: text("session_id").notNull(),

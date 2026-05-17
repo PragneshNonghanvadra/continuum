@@ -187,6 +187,19 @@ export function runMigrations(db: Database) {
       created_at text not null
     );
 
+    create table if not exists memory_embeddings (
+      id text primary key,
+      record_type text not null,
+      record_id text not null,
+      provider text not null,
+      model text not null,
+      dimensions integer not null,
+      vector_json text not null,
+      text_hash text not null,
+      created_at text not null,
+      unique (record_type, record_id, provider, model, text_hash)
+    );
+
     create table if not exists important_moments (
       id text primary key,
       session_id text not null references capture_sessions(id),
@@ -215,5 +228,6 @@ export function runMigrations(db: Database) {
     create index if not exists reader_pages_source_session_idx on reader_pages(source_session_id);
     create index if not exists revision_items_status_idx on revision_items(status);
     create index if not exists capture_events_session_idx on capture_events(session_id);
+    create index if not exists memory_embeddings_record_idx on memory_embeddings(record_type, record_id);
   `);
 }

@@ -82,6 +82,18 @@ export { processCapturedSession, type PersistedProcessResult, type ProcessCaptur
 export { exportMarkdownVault, type MarkdownExporter, type MarkdownExportOptions, type MarkdownExportResult } from "./export/markdownExporter";
 export { defaultRetentionPolicy, type RetentionPolicy } from "./privacy/retention";
 export { askMemory, askMemoryWithAi, type AskMemoryAnswer, type AskMemoryWithAiOptions } from "./search/askMemory";
+export {
+  DisabledEmbeddingProvider,
+  MockEmbeddingProvider,
+  listStoredEmbeddings,
+  searchStoredEmbeddings,
+  storeEmbedding,
+  type EmbeddingProvider,
+  type EmbeddingRecordType,
+  type EmbeddingSearchResult,
+  type StoreEmbeddingInput,
+  type StoredEmbedding
+} from "./search/embeddings";
 export { searchMemory, type SearchFilters, type SearchResult } from "./search/search";
 export type {
   LinkDraft,
