@@ -292,6 +292,25 @@ test("session capture diagnostics summarize whether evidence is arriving", async
   expect(payload.recentArtifacts.map((artifact: { artifactType: string }) => artifact.artifactType)).toContain("browser_visible_text");
 });
 
+test("request logging skips normal capture diagnostics polling", async () => {
+  const logs: string[] = [];
+  const app = createApiApp({ db: createMemoryDatabase(), logger: lineLogger(logs) });
+  const sessionResponse = await app.request("/api/sessions", {
+    body: JSON.stringify({ mode: "article", title: "Diagnostics polling" }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  const { session } = await sessionResponse.json();
+
+  await app.request(`/api/sessions/${session.id}/capture-diagnostics`);
+
+  expect(
+    logs
+      .map((line) => JSON.parse(line))
+      .some((entry) => entry.message === "api.request" && entry.path === `/api/sessions/${session.id}/capture-diagnostics`)
+  ).toBe(false);
+});
+
 test("process session API converts captured artifacts into suggested memories", async () => {
   const app = createApiApp({ db: createMemoryDatabase() });
   const sessionResponse = await app.request("/api/sessions", {

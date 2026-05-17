@@ -563,7 +563,11 @@ function requestIdFor(context: Context) {
 }
 
 function shouldSkipRequestLog(path: string, status: number) {
-  return path === "/api/extension/active-session" && status < 500;
+  return isNormalPollingPath(path) && status < 500;
+}
+
+function isNormalPollingPath(path: string) {
+  return path === "/api/extension/active-session" || /^\/api\/sessions\/[^/]+\/capture-diagnostics$/.test(path);
 }
 
 function statusForProcessError(message: string): 404 | 500 | 502 | 503 {
