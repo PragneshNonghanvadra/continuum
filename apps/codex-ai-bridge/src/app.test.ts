@@ -77,6 +77,23 @@ describe("codex AI bridge app", () => {
     expect(response.status).toBe(400);
   });
 
+  it("logs provider failure reasons", async () => {
+    const logs: string[] = [];
+    const app = createBridgeApp({
+      logger: lineLogger(logs),
+      provider: new OpenAiResponsesBridgeProvider()
+    });
+
+    const response = await app.request("/continuum/process", {
+      body: JSON.stringify(processRequest),
+      headers: { "content-type": "application/json" },
+      method: "POST"
+    });
+
+    expect(response.status).toBe(503);
+    expect(logs.map((line) => JSON.parse(line)).some((entry) => entry.message === "bridge.process_failed" && entry.status === 503)).toBe(true);
+  });
+
   it("answers Ask Memory requests from provided sources", async () => {
     const app = createBridgeApp({ provider: "fixture" });
 
@@ -168,3 +185,12 @@ describe("codex AI bridge app", () => {
     expect(payload.output.summary).toBe("AI summary");
   });
 });
+
+function lineLogger(entries: string[]) {
+  return {
+    debug: (message: string, metadata?: Record<string, unknown>) => entries.push(JSON.stringify({ ...metadata, message })),
+    error: (message: string, metadata?: Record<string, unknown>) => entries.push(JSON.stringify({ ...metadata, message })),
+    info: (message: string, metadata?: Record<string, unknown>) => entries.push(JSON.stringify({ ...metadata, message })),
+    warn: (message: string, metadata?: Record<string, unknown>) => entries.push(JSON.stringify({ ...metadata, message }))
+  };
+}

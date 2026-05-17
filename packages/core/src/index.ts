@@ -80,6 +80,7 @@ export { MockMemoryProcessor } from "./processing/mockMemoryProcessor";
 export { AiMemoryProcessor, createDefaultMemoryProcessor, type AiMemoryProcessorOptions } from "./processing/aiMemoryProcessor";
 export { processCapturedSession, type PersistedProcessResult, type ProcessCapturedSessionOptions } from "./processing/processSession";
 export { exportMarkdownVault, type MarkdownExporter, type MarkdownExportOptions, type MarkdownExportResult } from "./export/markdownExporter";
+export { createServerLogger, type LogLevel, type LogMetadata, type ServerLogger, type ServerLoggerOptions } from "./logging/serverLogger";
 export { defaultRetentionPolicy, type RetentionPolicy } from "./privacy/retention";
 export { askMemory, askMemoryWithAi, type AskMemoryAnswer, type AskMemoryWithAiOptions } from "./search/askMemory";
 export {

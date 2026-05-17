@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import type { AiGenerationRequest } from "@continuum/core";
+import type { AiGenerationRequest, ServerLogger } from "@continuum/core";
 import {
   BridgeProviderError,
   FixtureBridgeProvider,
@@ -9,12 +9,29 @@ import {
 } from "./providers";
 
 export type BridgeAppOptions = {
+  logger?: ServerLogger;
   provider?: "fixture" | BridgeProvider;
 };
 
 export function createBridgeApp(options: BridgeAppOptions = {}) {
   const provider = resolveProvider(options.provider);
+  const logger = options.logger;
   const app = new Hono();
+
+  app.use("*", async (context, next) => {
+    const requestId = context.req.header("x-request-id") ?? crypto.randomUUID();
+    const startedAt = performance.now();
+    context.header("x-continuum-request-id", requestId);
+    await next();
+    logger?.info("bridge.request", {
+      durationMs: Math.round(performance.now() - startedAt),
+      method: context.req.method,
+      path: new URL(context.req.url).pathname,
+      provider: provider.id,
+      requestId,
+      status: context.res.status
+    });
+  });
 
   app.get("/health", (context) =>
     context.json({
@@ -40,9 +57,25 @@ export function createBridgeApp(options: BridgeAppOptions = {}) {
       return context.json({ output });
     } catch (error) {
       if (error instanceof BridgeProviderError) {
+        logger?.error("bridge.process_failed", {
+          message: error.message,
+          provider: provider.id,
+          requestId: context.req.header("x-request-id") ?? context.res.headers.get("x-continuum-request-id") ?? "unknown",
+          schemaName: body.schemaName,
+          status: error.status,
+          task: body.task
+        });
         return context.json({ error: error.message }, error.status);
       }
       const message = error instanceof Error ? error.message : "Codex bridge processing failed.";
+      logger?.error("bridge.process_failed", {
+        message,
+        provider: provider.id,
+        requestId: context.req.header("x-request-id") ?? context.res.headers.get("x-continuum-request-id") ?? "unknown",
+        schemaName: body.schemaName,
+        status: 500,
+        task: body.task
+      });
       return context.json({ error: message }, 500);
     }
   });

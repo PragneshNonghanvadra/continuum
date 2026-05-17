@@ -297,8 +297,10 @@ test("process session API converts captured artifacts into suggested memories", 
 });
 
 test("process session API reports AI provider outages as service unavailable", async () => {
+  const logs: string[] = [];
   const app = createApiApp({
     db: createMemoryDatabase(),
+    logger: lineLogger(logs),
     runtime: {
       aiProvider: new UnavailableProcessProvider(),
       requireAiProvider: true
@@ -324,6 +326,9 @@ test("process session API reports AI provider outages as service unavailable", a
 
   expect(processResponse.status).toBe(503);
   expect(payload.error).toContain("AI provider request failed with 503");
+  expect(logs.map((line) => JSON.parse(line)).some((entry) => entry.message === "api.process_session_failed" && entry.status === 503)).toBe(
+    true
+  );
 });
 
 test("memory review API edits, approves, rejects, and archives suggested cards", async () => {
@@ -670,4 +675,13 @@ class UnavailableProcessProvider implements AiGenerationProvider {
   async generateJson<T>(_request: AiGenerationRequest): Promise<T> {
     throw new Error("AI provider request failed with 503");
   }
+}
+
+function lineLogger(entries: string[]) {
+  return {
+    debug: (message: string, metadata?: Record<string, unknown>) => entries.push(JSON.stringify({ ...metadata, message })),
+    error: (message: string, metadata?: Record<string, unknown>) => entries.push(JSON.stringify({ ...metadata, message })),
+    info: (message: string, metadata?: Record<string, unknown>) => entries.push(JSON.stringify({ ...metadata, message })),
+    warn: (message: string, metadata?: Record<string, unknown>) => entries.push(JSON.stringify({ ...metadata, message }))
+  };
 }

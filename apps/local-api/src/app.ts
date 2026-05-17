@@ -1,4 +1,5 @@
 import type { Database } from "bun:sqlite";
+import type { Context } from "hono";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import {
@@ -43,12 +44,14 @@ import {
   type CaptureStatus,
   type CreateCaptureSourceInput,
   type CreateArtifactInput,
-  type AiGenerationProvider
+  type AiGenerationProvider,
+  type ServerLogger
 } from "@continuum/core";
 import { jsonError, readJsonBody } from "./http";
 
 export type ApiAppOptions = {
   db: Database;
+  logger?: ServerLogger;
   runtime?: {
     aiProvider?: AiGenerationProvider;
     autoExport?: boolean;
@@ -57,7 +60,7 @@ export type ApiAppOptions = {
   };
 };
 
-export function createApiApp({ db, runtime = {} }: ApiAppOptions) {
+export function createApiApp({ db, logger, runtime = {} }: ApiAppOptions) {
   const app = new Hono();
   const aiProvider = runtime.aiProvider ?? createAiProviderFromEnv();
   const requireAiProvider = runtime.requireAiProvider ?? parseBoolean(process.env.CONTINUUM_AI_REQUIRE_PROVIDER);
@@ -81,6 +84,19 @@ export function createApiApp({ db, runtime = {} }: ApiAppOptions) {
       }
     })
   );
+  app.use("/api/*", async (context, next) => {
+    const requestId = requestIdFor(context);
+    const startedAt = performance.now();
+    context.header("x-continuum-request-id", requestId);
+    await next();
+    logger?.info("api.request", {
+      durationMs: Math.round(performance.now() - startedAt),
+      method: context.req.method,
+      path: new URL(context.req.url).pathname,
+      requestId,
+      status: context.res.status
+    });
+  });
 
   app.get("/api/health", (context) =>
     context.json({
@@ -343,7 +359,16 @@ export function createApiApp({ db, runtime = {} }: ApiAppOptions) {
       return context.json(result);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to process session";
-      return jsonError(context, statusForProcessError(message), message);
+      const status = statusForProcessError(message);
+      logger?.error("api.process_session_failed", {
+        aiProvider: aiProvider.describe(),
+        message,
+        requestId: requestIdFor(context),
+        sessionId: context.req.param("id"),
+        status,
+        strictMode: requireAiProvider
+      });
+      return jsonError(context, status, message);
     }
   });
 
@@ -407,7 +432,15 @@ export function createApiApp({ db, runtime = {} }: ApiAppOptions) {
         })
       );
     } catch (error) {
-      return jsonError(context, 500, error instanceof Error ? error.message : "Ask Memory failed");
+      const message = error instanceof Error ? error.message : "Ask Memory failed";
+      logger?.error("api.ask_memory_failed", {
+        aiProvider: aiProvider.describe(),
+        message,
+        requestId: requestIdFor(context),
+        status: 500,
+        strictMode: requireAiProvider
+      });
+      return jsonError(context, 500, message);
     }
   });
 
@@ -518,6 +551,10 @@ function buildAiHealth(provider: AiGenerationProvider, strictMode: boolean) {
 function parseBoolean(value: string | undefined) {
   if (!value) return false;
   return ["1", "true", "yes", "on"].includes(value.toLowerCase());
+}
+
+function requestIdFor(context: Context) {
+  return context.req.header("x-request-id") ?? context.res.headers.get("x-continuum-request-id") ?? crypto.randomUUID();
 }
 
 function statusForProcessError(message: string): 404 | 500 | 502 | 503 {
