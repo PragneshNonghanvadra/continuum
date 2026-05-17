@@ -11,10 +11,16 @@ struct ContinuumNativeCaptureCommand {
             try printJson(event)
         case "capabilities":
             try printJson(nativeCaptureCapabilities)
+        case "ocr-window":
+            if let event = try OcrPipeline().captureFrontmostWindowText(retainRawImage: false) {
+                try printJson(event)
+            } else {
+                try printJson(NativeCaptureEvent(sessionId: nil, source: nil, artifacts: [], occurredAt: ISO8601DateFormatter().string(from: Date())))
+            }
         case "sample":
             try printJson(sampleEvent())
         default:
-            print("usage: continuum-native-capture accessibility-sample|capabilities|sample")
+            print("usage: continuum-native-capture accessibility-sample|capabilities|ocr-window|sample")
         }
     }
 

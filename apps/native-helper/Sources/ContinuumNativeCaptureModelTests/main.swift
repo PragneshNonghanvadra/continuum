@@ -6,6 +6,8 @@ struct ContinuumNativeCaptureModelTests {
     static func main() throws {
         try nativeCaptureEventEncodesContinuumApiShape()
         try accessibilitySampleMapsToNativeArtifacts()
+        try ocrResultMapsToDerivedArtifactWithoutRawRetention()
+        try ocrPipelineDeletesTemporarySnapshotByDefault()
         print("ContinuumNativeCaptureModelTests passed")
     }
 
@@ -70,6 +72,39 @@ struct ContinuumNativeCaptureModelTests {
         try expect(event.source?.sourceType == "macos_app", "Accessibility source should be a macOS app")
         try expect(event.artifacts.contains { $0.artifactType == "native_app_text" }, "Selected text should become native_app_text")
         try expect(event.artifacts.contains { $0.artifactType == "document_text" }, "Document text should become document_text")
+    }
+
+    private static func ocrResultMapsToDerivedArtifactWithoutRawRetention() throws {
+        let snapshot = WindowSnapshot(
+            filePath: "/tmp/continuum-window.png",
+            windowTitle: "Preview paper",
+            retainRawImage: false,
+            metadata: ["fixture": .bool(true)]
+        )
+        let ocr = FixtureOcrService(text: "Continuum OCR fixture")
+        let result = try ocr.recognizeText(in: snapshot)
+        let event = result.toNativeCaptureEvent(sessionId: "session_1")
+
+        try expect(event.artifacts.contains { $0.artifactType == "ocr_text" }, "OCR text should become ocr_text")
+        try expect(event.artifacts.first?.content == "Continuum OCR fixture", "OCR text should be preserved as derived text")
+        try expect(event.artifacts.first?.filePath == nil, "Raw screenshot path should not be retained by default")
+        try expect(event.source?.permissionState == "granted", "OCR fixture source should be permission-granted")
+    }
+
+    private static func ocrPipelineDeletesTemporarySnapshotByDefault() throws {
+        let tempUrl = FileManager.default.temporaryDirectory.appendingPathComponent("continuum-ocr-test-\(UUID().uuidString).png")
+        try Data("pixels".utf8).write(to: tempUrl)
+        let pipeline = OcrPipeline(
+            snapshotter: FixtureWindowSnapshotter(
+                snapshot: WindowSnapshot(filePath: tempUrl.path, windowTitle: "Fixture", retainRawImage: false)
+            ),
+            ocr: FixtureOcrService(text: "Temporary OCR text")
+        )
+
+        let event = try pipeline.captureFrontmostWindowText(sessionId: "session_1", retainRawImage: false)
+
+        try expect(event?.artifacts.first?.content == "Temporary OCR text", "OCR pipeline should return derived text")
+        try expect(!FileManager.default.fileExists(atPath: tempUrl.path), "OCR pipeline should delete temporary raw image by default")
     }
 }
 
