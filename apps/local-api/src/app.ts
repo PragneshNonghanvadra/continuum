@@ -60,6 +60,14 @@ export function createApiApp({ db, runtime = {} }: ApiAppOptions) {
   const app = new Hono();
   const aiProvider = runtime.aiProvider ?? createAiProviderFromEnv();
   const requireAiProvider = runtime.requireAiProvider ?? parseBoolean(process.env.CONTINUUM_AI_REQUIRE_PROVIDER);
+  const autoExportIfEnabled = () =>
+    runtime.autoExport
+      ? exportMarkdownVault(db, {
+          exportDir: runtime.exportDir,
+          includeGraph: true,
+          includeSuggested: true
+        })
+      : undefined;
 
   app.use(
     "/api/*",
@@ -347,17 +355,17 @@ export function createApiApp({ db, runtime = {} }: ApiAppOptions) {
   app.patch("/api/memories/:id", async (context) => {
     const body = await readJsonBody<Parameters<typeof updateMemory>[2]>(context);
     const memory = updateMemory(db, context.req.param("id"), body);
-    return memory ? context.json({ memory }) : jsonError(context, 404, "Memory not found");
+    return memory ? context.json({ exportResult: autoExportIfEnabled(), memory }) : jsonError(context, 404, "Memory not found");
   });
 
   app.post("/api/memories/:id/approve", (context) => {
     const memory = updateMemoryStatus(db, context.req.param("id"), "approved");
-    return memory ? context.json({ memory }) : jsonError(context, 404, "Memory not found");
+    return memory ? context.json({ exportResult: autoExportIfEnabled(), memory }) : jsonError(context, 404, "Memory not found");
   });
 
   app.post("/api/memories/:id/reject", (context) => {
     const memory = updateMemoryStatus(db, context.req.param("id"), "rejected");
-    return memory ? context.json({ memory }) : jsonError(context, 404, "Memory not found");
+    return memory ? context.json({ exportResult: autoExportIfEnabled(), memory }) : jsonError(context, 404, "Memory not found");
   });
 
   app.get("/api/memories/:id/links", (context) => context.json({ links: listMemoryLinksForMemory(db, context.req.param("id")) }));

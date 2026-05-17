@@ -334,6 +334,36 @@ test("memory review API edits, approves, rejects, and archives suggested cards",
   expect((await archiveResponse.json()).memory.status).toBe("archived");
 });
 
+test("memory review auto-refreshes markdown export when enabled", async () => {
+  const exportDir = `/tmp/continuum-review-export-${crypto.randomUUID()}`;
+  const app = createApiApp({
+    db: createMemoryDatabase(),
+    runtime: {
+      autoExport: true,
+      exportDir
+    }
+  });
+  const sessionResponse = await app.request("/api/sessions", {
+    body: JSON.stringify({ mode: "article", title: "Review export session" }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  const { session } = await sessionResponse.json();
+  await app.request(`/api/sessions/${session.id}/artifacts`, {
+    body: JSON.stringify({ artifactType: "article_text", content: "Approved review memories should refresh the Markdown vault." }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+  await app.request(`/api/sessions/${session.id}/process`, { method: "POST" });
+  const memories = await (await app.request("/api/memories?status=suggested")).json();
+
+  const approvePayload = await (await app.request(`/api/memories/${memories.memories[0].id}/approve`, { method: "POST" })).json();
+
+  expect(approvePayload.memory.status).toBe("approved");
+  expect(approvePayload.exportResult.exportDir).toBe(exportDir);
+  expect(approvePayload.exportResult.fileCount).toBeGreaterThan(0);
+});
+
 test("reader page API lists generated session pages", async () => {
   const app = createApiApp({ db: createMemoryDatabase() });
   const sessionResponse = await app.request("/api/sessions", {
