@@ -64,6 +64,20 @@ export function App() {
   const suggestedCount = snapshot.memories.filter((memory) => memory.status === "suggested").length;
   const aiLabel = formatAiStatus(snapshot.aiProvider, snapshot.aiHealth);
 
+  async function pauseResumeActiveSession() {
+    if (!activeSession) return;
+    await updateSessionRequest(activeSession.id, { status: activeSession.status === "paused" ? "active" : "paused" });
+    await refreshSnapshot();
+  }
+
+  async function stopAndProcessActiveSession() {
+    if (!activeSession) return;
+    await stopNativeCaptureRequest();
+    await updateSessionRequest(activeSession.id, { endedAt: new Date().toISOString(), status: "processing" });
+    await processSessionRequest(activeSession.id);
+    await refreshSnapshot();
+  }
+
   return (
     <main className="app-shell">
       <aside className="sidebar">
@@ -117,6 +131,8 @@ export function App() {
       <CommandDock
         activeSession={activeSession}
         onNavigate={setActiveView}
+        onPauseResume={pauseResumeActiveSession}
+        onStopProcess={stopAndProcessActiveSession}
         processingCount={processingCount}
         suggestedCount={suggestedCount}
       />
@@ -202,11 +218,15 @@ function StatusTile({ label, value }: { label: string; value: string }) {
 function CommandDock({
   activeSession,
   onNavigate,
+  onPauseResume,
+  onStopProcess,
   processingCount,
   suggestedCount
 }: {
   activeSession?: CaptureSession;
   onNavigate: (view: NavigationItem["id"]) => void;
+  onPauseResume: () => Promise<void>;
+  onStopProcess: () => Promise<void>;
   processingCount: number;
   suggestedCount: number;
 }) {
@@ -217,9 +237,20 @@ function CommandDock({
         <strong>{activeSession?.title ?? `${processingCount} sessions ready`}</strong>
       </div>
       <div className="command-dock__actions">
-        <button onClick={() => onNavigate("capture")} title="Open capture controls" type="button">
-          Capture
-        </button>
+        {activeSession ? (
+          <>
+            <button onClick={onPauseResume} title={activeSession.status === "paused" ? "Resume capture" : "Pause capture"} type="button">
+              {activeSession.status === "paused" ? "Resume" : "Pause"}
+            </button>
+            <button onClick={onStopProcess} title="Stop and process active capture" type="button">
+              Stop
+            </button>
+          </>
+        ) : (
+          <button onClick={() => onNavigate("capture")} title="Open capture controls" type="button">
+            Capture
+          </button>
+        )}
         <button onClick={() => onNavigate("inbox")} title="Review suggested memories" type="button">
           Inbox {suggestedCount}
         </button>
