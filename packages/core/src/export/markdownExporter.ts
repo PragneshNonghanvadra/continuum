@@ -52,10 +52,16 @@ export function exportMarkdownVault(db: Database, options: MarkdownExportOptions
   if (options.includeGraph) {
     const graph = buildObsidianGraph(db, memories, pages, links);
     const graphJsonPath = join(exportDir, "Graph", "continuum-graph.json");
+    const graphNodesPath = join(exportDir, "Graph", "continuum-nodes.json");
+    const graphEdgesPath = join(exportDir, "Graph", "continuum-edges.json");
+    const topicClustersPath = join(exportDir, "Graph", "topic-clusters.json");
     const graphMarkdownPath = join(exportDir, "Graph", "Continuum Knowledge Graph.md");
     writeFileSync(graphJsonPath, JSON.stringify(graph, null, 2), "utf8");
+    writeFileSync(graphNodesPath, JSON.stringify(graph.nodes, null, 2), "utf8");
+    writeFileSync(graphEdgesPath, JSON.stringify(graph.edges, null, 2), "utf8");
+    writeFileSync(topicClustersPath, JSON.stringify(buildTopicClusters(graph), null, 2), "utf8");
     writeFileSync(graphMarkdownPath, renderGraphMarkdown(graph), "utf8");
-    files.push(graphJsonPath, graphMarkdownPath);
+    files.push(graphJsonPath, graphNodesPath, graphEdgesPath, topicClustersPath, graphMarkdownPath);
   }
 
   return {
@@ -78,6 +84,14 @@ type KnowledgeGraph = {
     target: string;
     relation: string;
     reason?: string;
+  }>;
+};
+
+type TopicClusters = {
+  clusters: Array<{
+    id: string;
+    label: string;
+    memories: Array<{ id: string; label: string }>;
   }>;
 };
 
@@ -238,6 +252,23 @@ function renderGraphMarkdown(graph: KnowledgeGraph) {
     "",
     sourceLinks || "- No exported memory or reader nodes yet."
   ].join("\n");
+}
+
+function buildTopicClusters(graph: KnowledgeGraph): TopicClusters {
+  const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
+  const clusters = graph.nodes
+    .filter((node) => node.type === "topic")
+    .map((topic) => ({
+      id: topic.id,
+      label: topic.label,
+      memories: graph.edges
+        .filter((edge) => edge.source === topic.id && edge.relation === "topic_memory")
+        .map((edge) => nodeById.get(edge.target))
+        .filter((node): node is NonNullable<typeof node> => Boolean(node) && node.type === "memory")
+        .map((node) => ({ id: node.id, label: node.label }))
+    }));
+
+  return { clusters };
 }
 
 function folderForPage(page: ReaderPage) {

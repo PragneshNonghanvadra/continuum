@@ -48,12 +48,21 @@ test("exports suggested session memories and an Obsidian graph when requested", 
   const result = exportMarkdownVault(db, { exportDir, includeGraph: true, includeSuggested: true });
 
   const graphFile = join(exportDir, "Graph", "continuum-graph.json");
+  const graphEdgesFile = join(exportDir, "Graph", "continuum-edges.json");
+  const graphNodesFile = join(exportDir, "Graph", "continuum-nodes.json");
+  const topicClustersFile = join(exportDir, "Graph", "topic-clusters.json");
   const graphMarkdown = join(exportDir, "Graph", "Continuum Knowledge Graph.md");
   const graph = JSON.parse(readFileSync(graphFile, "utf8"));
 
   expect(result.files).toContain(graphFile);
+  expect(result.files).toContain(graphEdgesFile);
+  expect(result.files).toContain(graphNodesFile);
+  expect(result.files).toContain(topicClustersFile);
   expect(result.files).toContain(graphMarkdown);
   expect(graph.nodes.some((node: { type: string }) => node.type === "session")).toBe(true);
   expect(graph.nodes.some((node: { type: string }) => node.type === "memory")).toBe(true);
+  expect(JSON.parse(readFileSync(graphEdgesFile, "utf8"))[0]).toHaveProperty("relation");
+  expect(JSON.parse(readFileSync(graphNodesFile, "utf8"))[0]).toHaveProperty("label");
+  expect(JSON.parse(readFileSync(topicClustersFile, "utf8"))).toHaveProperty("clusters");
   expect(readFileSync(graphMarkdown, "utf8")).toContain("```mermaid");
 });
