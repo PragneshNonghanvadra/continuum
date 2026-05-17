@@ -419,7 +419,7 @@ export function createApiApp({ db, runtime = {} }: ApiAppOptions) {
 
   app.post("/api/export/markdown", async (context) => {
     const body = await readJsonBody<{ exportDir?: string }>(context);
-    return context.json(exportMarkdownVault(db, { exportDir: body.exportDir }));
+    return context.json(exportMarkdownVault(db, { exportDir: body.exportDir, includeGraph: true }));
   });
 
   app.get("/api/settings/privacy", (context) =>
