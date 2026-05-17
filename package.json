@@ -10,7 +10,9 @@
     "dev:api": "bun run --cwd apps/local-api dev",
     "dev:ai-bridge": "bun run --cwd apps/codex-ai-bridge dev",
     "dev:desktop": "bun run --cwd apps/desktop dev",
-    "build": "bun run --cwd packages/core build && bun run --cwd apps/local-api build && bun run --cwd apps/codex-ai-bridge build && bun run --cwd apps/chrome-extension build && bun run --cwd apps/desktop build",
+    "build": "bun run --cwd packages/core build && bun run --cwd apps/local-api build && bun run --cwd apps/codex-ai-bridge build && bun run native:build && bun run --cwd apps/chrome-extension build && bun run --cwd apps/desktop build",
+    "native:build": "swift build --package-path apps/native-helper",
+    "native:test": "swift run --package-path apps/native-helper continuum-native-capture-model-tests",
     "test": "bun test apps/chrome-extension/src apps/codex-ai-bridge/src apps/desktop/src apps/local-api/src packages/core/src",
     "typecheck": "tsc -p packages/core/tsconfig.json --noEmit && tsc -p apps/local-api/tsconfig.json --noEmit && tsc -p apps/codex-ai-bridge/tsconfig.json --noEmit && tsc -p apps/chrome-extension/tsconfig.json --noEmit && tsc -p apps/desktop/tsconfig.json --noEmit",
     "lint": "bun run typecheck"

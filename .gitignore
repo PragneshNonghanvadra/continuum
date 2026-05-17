@@ -8,6 +8,7 @@ data
 memory-vault
 .continuum-test-*
 apps/desktop/src-tauri/target
+apps/native-helper/.build
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
