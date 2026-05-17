@@ -8,6 +8,10 @@ export function canCaptureFromActiveSession(session: ExtensionSessionSnapshot | 
   return session?.status === "active";
 }
 
+export function canCaptureFromTab(session: ExtensionSessionSnapshot | null | undefined, senderTabId: number | undefined, activeTabId: number | undefined) {
+  return canCaptureFromActiveSession(session) && senderTabId !== undefined && senderTabId === activeTabId;
+}
+
 export function extensionHeaders(pairingToken: string) {
   return {
     "content-type": "application/json",
